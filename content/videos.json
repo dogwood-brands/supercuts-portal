@@ -1,0 +1,134 @@
+[
+  {
+    "channel": "Guest experience",
+    "title": "The guest consultation",
+    "description": "The five questions to ask before every cut, and how to repeat the plan back.",
+    "url": "https://academy.dogwoodbrands.com",
+    "poster_url": "/media/vid-consultation.webp",
+    "duration_s": 76,
+    "views": 412,
+    "sort": 1,
+    "sample": false
+  },
+  {
+    "channel": "Guest experience",
+    "title": "A great first visit",
+    "description": "How to welcome a new guest from the door to the chair so they come back.",
+    "url": null,
+    "poster_url": "/media/vid-first-visit.webp",
+    "duration_s": 185,
+    "views": 268,
+    "sort": 2,
+    "sample": true
+  },
+  {
+    "channel": "Guest experience",
+    "title": "Cutting kids' hair without tears",
+    "description": "Getting to eye level, explaining the clippers and knowing when to pause.",
+    "url": null,
+    "poster_url": "/media/vid-kids-cut.webp",
+    "duration_s": 214,
+    "views": 351,
+    "sort": 3,
+    "sample": true
+  },
+  {
+    "channel": "Technique",
+    "title": "Clean fades: guard work and blending",
+    "description": "Setting the guideline, working up through guards and erasing the line.",
+    "url": null,
+    "poster_url": "/media/vid-fade.webp",
+    "duration_s": 402,
+    "views": 689,
+    "sort": 4,
+    "sample": true
+  },
+  {
+    "channel": "Technique",
+    "title": "Scissor over comb fundamentals",
+    "description": "Comb angle, hand position and checking your work in the mirror.",
+    "url": null,
+    "poster_url": "/media/vid-scissor-over-comb.webp",
+    "duration_s": 336,
+    "views": 502,
+    "sort": 5,
+    "sample": true
+  },
+  {
+    "channel": "Technique",
+    "title": "Necklines and finishing",
+    "description": "Squared, rounded or tapered: clean finishing and the hand mirror check.",
+    "url": null,
+    "poster_url": "/media/std-cut-finish.webp",
+    "duration_s": 198,
+    "views": 297,
+    "sort": 6,
+    "sample": true
+  },
+  {
+    "channel": "Retail",
+    "title": "How to position products and services",
+    "description": "Recommend what you used and why. One product, in the chair.",
+    "url": "https://academy.dogwoodbrands.com",
+    "poster_url": "/media/vid-retail.webp",
+    "duration_s": 148,
+    "views": 377,
+    "sort": 7,
+    "sample": false
+  },
+  {
+    "channel": "Retail",
+    "title": "Offering the shampoo upgrade",
+    "description": "When to ask, what to say and why the consultation is the moment.",
+    "url": null,
+    "poster_url": "/media/promo-supercut-plus.webp",
+    "duration_s": 122,
+    "views": 244,
+    "sort": 8,
+    "sample": true
+  },
+  {
+    "channel": "Leadership",
+    "title": "Running a five minute huddle",
+    "description": "Yesterday's numbers, today's focus, one shout-out. Every morning.",
+    "url": null,
+    "poster_url": "/media/vid-leadership.webp",
+    "duration_s": 167,
+    "views": 158,
+    "sort": 9,
+    "sample": true
+  },
+  {
+    "channel": "Leadership",
+    "title": "Coaching in the moment",
+    "description": "How to give feedback on the floor without embarrassing anyone.",
+    "url": null,
+    "poster_url": "/media/std-uniform.webp",
+    "duration_s": 231,
+    "views": 131,
+    "sort": 10,
+    "sample": true
+  },
+  {
+    "channel": "Operations",
+    "title": "Point of sale and cash handling",
+    "description": "Drawer counts, deposits, refunds and voids, step by step.",
+    "url": "https://academy.dogwoodbrands.com",
+    "poster_url": "/media/ops-cash-handling.webp",
+    "duration_s": 204,
+    "views": 290,
+    "sort": 11,
+    "sample": false
+  },
+  {
+    "channel": "Operations",
+    "title": "Opening and closing walkthrough",
+    "description": "A manager walks through both checklists in real time.",
+    "url": null,
+    "poster_url": "/media/vid-operations.webp",
+    "duration_s": 275,
+    "views": 203,
+    "sort": 12,
+    "sample": true
+  }
+]

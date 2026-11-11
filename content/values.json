@@ -1,0 +1,32 @@
+[
+  {
+    "key": "guest_first",
+    "label": "Guest first",
+    "meaning": "Made a guest's visit easier, warmer or better than they expected."
+  },
+  {
+    "key": "craft",
+    "label": "Craft",
+    "meaning": "Quality work on the cut and the finish, every guest, every time."
+  },
+  {
+    "key": "team_player",
+    "label": "Team player",
+    "meaning": "Jumped in to help a teammate or another salon without being asked."
+  },
+  {
+    "key": "shows_up",
+    "label": "Shows up",
+    "meaning": "Reliable, on time and ready, especially when it was not easy."
+  },
+  {
+    "key": "grows_others",
+    "label": "Grows others",
+    "meaning": "Taught, coached or encouraged someone to get better."
+  },
+  {
+    "key": "owns_it",
+    "label": "Owns it",
+    "meaning": "Saw a problem, took responsibility and fixed it."
+  }
+]

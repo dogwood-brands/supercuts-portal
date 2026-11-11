@@ -1,0 +1,112 @@
+/* Company and district rollup */
+
+.company .page-header-actions {
+  align-items: center;
+  gap: var(--s-4);
+}
+.co-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-8);
+  padding: var(--s-8);
+}
+.co-hero-main {
+  min-width: 0;
+}
+.co-hero-sales {
+  font-size: clamp(40px, 6.4vw, 76px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin: var(--s-3) 0 var(--s-4);
+}
+.co-hero-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2) var(--s-5);
+  font-size: var(--fs-14);
+  color: var(--night-muted);
+}
+.co-hero-line b {
+  color: var(--night-ink);
+  font-family: var(--font-display);
+}
+.co-gap {
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-12);
+}
+.co-gap.is-up {
+  background: rgba(79, 208, 140, 0.16);
+  color: #6fe0a4;
+}
+.co-gap.is-down {
+  background: rgba(165, 70, 59, 0.24);
+  color: #e8a79f;
+}
+.co-hero .delta-up {
+  color: #6fe0a4;
+}
+.co-hero .delta-down {
+  color: #e8a79f;
+}
+.co-hero .ring-label small {
+  color: var(--night-muted);
+}
+.co-two {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  gap: var(--s-4);
+  align-items: stretch;
+}
+.co-two > :only-child {
+  grid-column: 1 / -1;
+}
+.co-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  min-height: 24px;
+}
+.co-sort:hover,
+.co-sort.is-on {
+  color: var(--ink);
+}
+.co-breakdown .table-wrap {
+  max-height: 640px;
+  overflow: auto;
+}
+
+@media (max-width: 1100px) {
+  .co-two {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 760px) {
+  .co-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: var(--s-5);
+    gap: var(--s-5);
+  }
+  .co-hero .ring {
+    align-self: center;
+  }
+  .company .stat-value {
+    font-size: var(--fs-22);
+  }
+}
+
+/* Core gap (reported to the lead): .user-chip-text children are spans and need to stack. Safe to delete once components.css has it. */
+.user-chip-text {
+  display: flex;
+  flex-direction: column;
+}

@@ -1,0 +1,110 @@
+/* SC Portal design tokens. Every colour, size and radius used anywhere comes from here. */
+
+@font-face {
+  font-family: "Red Hat Display";
+  src: url("/fonts/red-hat-display.woff2") format("woff2");
+  font-weight: 400 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Red Hat Text";
+  src: url("/fonts/red-hat-text.woff2") format("woff2");
+  font-weight: 400 700;
+  font-display: swap;
+}
+
+:root {
+  /* type */
+  --font-display: "Red Hat Display", "Helvetica Neue", Arial, sans-serif;
+  --font-text: "Red Hat Text", "Helvetica Neue", Arial, sans-serif;
+  --fs-11: 0.6875rem;
+  --fs-12: 0.75rem;
+  --fs-13: 0.8125rem;
+  --fs-14: 0.875rem;
+  --fs-15: 0.9375rem;
+  --fs-16: 1rem;
+  --fs-18: 1.125rem;
+  --fs-22: 1.375rem;
+  --fs-28: 1.75rem;
+  --fs-36: 2.25rem;
+  --fs-48: 3rem;
+
+  /* colour: warm paper, ink, and one quiet bronze accent (no red: red reads as a competitor's brand) */
+  --paper: #f6f5f1;
+  --surface: #ffffff;
+  --surface-2: #faf9f6;
+  --surface-3: #f1efea;
+  --ink: #16161a;
+  --ink-2: #3a3a42;
+  --muted: #6c6c76;
+  --faint: #9a9aa3;
+  --line: #e6e3dc;
+  --line-strong: #d3cfc6;
+
+  --brand: #8a6a3e;
+  --brand-ink: #6b5130;
+  --brand-soft: #f5efe4;
+  --brand-on: #ffffff;
+  --brand-bright: #c9aa7c; /* the accent on dark surfaces */
+
+  --good: #17794a;
+  --good-soft: #e6f3ec;
+  --warn: #a35f00;
+  --warn-soft: #fbf1dd;
+  --bad: #a5463b;
+  --bad-soft: #f8ece9;
+  --info: #235a9f;
+  --info-soft: #e8f0fa;
+
+  --night: #121215;
+  --night-2: #1c1c21;
+  --night-3: #2a2a31;
+  --night-ink: #f3f2ee;
+  --night-muted: #a2a2ac;
+
+  /* space */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+  --s-16: 64px;
+
+  /* shape */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+  --r-pill: 999px;
+
+  --shadow-1: 0 1px 2px rgba(22, 22, 26, 0.05);
+  --shadow-2: 0 2px 6px rgba(22, 22, 26, 0.06), 0 10px 24px rgba(22, 22, 26, 0.06);
+  --shadow-3: 0 8px 20px rgba(22, 22, 26, 0.1), 0 28px 64px rgba(22, 22, 26, 0.16);
+  --ring: 0 0 0 3px rgba(138, 106, 62, 0.32);
+
+  /* motion */
+  --ease: cubic-bezier(0.22, 0.8, 0.26, 1);
+  --t-fast: 140ms;
+  --t-med: 220ms;
+  --t-slow: 420ms;
+
+  /* layout */
+  --sidebar-w: 248px;
+  --topbar-h: 60px;
+  --tabbar-h: 62px;
+  --content-max: 1240px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --t-fast: 1ms;
+    --t-med: 1ms;
+    --t-slow: 1ms;
+  }
+}

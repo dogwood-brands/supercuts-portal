@@ -1,0 +1,20 @@
+{
+  "name": "SC Portal",
+  "short_name": "SC Portal",
+  "description": "Team portal for SC Entities Supercuts salons.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#121215",
+  "theme_color": "#121215",
+  "icons": [
+    { "src": "/media/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/media/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/media/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "My salon", "url": "/#/salon" },
+    { "name": "Scoreboard", "url": "/#/scoreboard" }
+  ]
+}

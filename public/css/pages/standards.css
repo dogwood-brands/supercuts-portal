@@ -1,0 +1,40 @@
+@import url("/css/pages/modules.css");
+
+.notice {
+  margin-bottom: var(--s-6);
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  flex-wrap: wrap;
+}
+.notice-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  color: var(--brand-ink);
+  flex: none;
+}
+.ack-card .ack-check {
+  margin: var(--s-2) 0 var(--s-3);
+}
+.ack-card .checkbox input:checked + span {
+  text-decoration: none;
+  color: var(--ink);
+}
+.ack-card.is-done {
+  border-color: var(--good);
+  background: var(--good-soft);
+}
+.ack-tick {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--good);
+  color: #fff;
+  flex: none;
+  animation: pop-in var(--t-med) var(--ease);
+}

@@ -1,0 +1,117 @@
+/* Profile page */
+
+.profile {
+  max-width: 880px;
+  margin: 0 auto;
+}
+.profile-hero {
+  overflow: hidden;
+}
+.profile-band {
+  height: 96px;
+  background: linear-gradient(120deg, var(--night) 0%, var(--night-3) 62%, var(--brand) 160%);
+}
+.profile-main {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--s-5);
+  padding: 0 var(--s-6);
+  margin-top: -44px;
+}
+.profile-avatar {
+  border-radius: 50%;
+  padding: 4px;
+  background: var(--surface);
+  flex: none;
+}
+.profile-id {
+  padding-bottom: var(--s-2);
+}
+.profile-id h1 {
+  font-size: var(--fs-28);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  margin-bottom: 4px;
+}
+.profile-main > .btn {
+  margin-bottom: var(--s-2);
+}
+.profile-bio {
+  padding: var(--s-4) var(--s-6) 0;
+  color: var(--ink-2);
+  max-width: 68ch;
+  white-space: pre-wrap;
+}
+.profile-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-6);
+  padding: var(--s-5) var(--s-6);
+  margin-top: var(--s-5);
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-14);
+  color: var(--ink-2);
+}
+.profile-facts > * {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 28px;
+}
+.profile-facts svg {
+  color: var(--muted);
+  flex: none;
+}
+.profile-facts a:hover span {
+  text-decoration: underline;
+}
+.profile-hero > .profile-main:last-child {
+  padding-bottom: var(--s-6);
+}
+.profile-section-head {
+  margin-bottom: var(--s-4);
+  flex-wrap: wrap;
+}
+.profile-section-head h2 {
+  font-size: var(--fs-18);
+}
+.profile-section-head svg {
+  color: var(--brand);
+}
+.profile-trend {
+  margin-top: var(--s-4);
+}
+
+@media (max-width: 760px) {
+  .profile-band {
+    height: 72px;
+  }
+  .profile-main {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--s-3);
+    padding: 0 var(--s-4);
+  }
+  .profile-avatar .avatar {
+    --size: 84px !important;
+    width: 84px;
+    height: 84px;
+  }
+  .profile-id h1 {
+    font-size: var(--fs-22);
+  }
+  .profile-bio,
+  .profile-facts {
+    padding-left: var(--s-4);
+    padding-right: var(--s-4);
+  }
+  .profile .stat-value {
+    font-size: var(--fs-22);
+  }
+}
+
+/* Core gap (reported to the lead): .user-chip-text children are spans and need to stack. Safe to delete once components.css has it. */
+.user-chip-text {
+  display: flex;
+  flex-direction: column;
+}

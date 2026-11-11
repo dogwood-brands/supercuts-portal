@@ -1,0 +1,17 @@
+# dependencies
+node_modules/
+
+# runtime data: database, uploads, backups, generated logins, imported sales. Never commit.
+data/
+
+# one-off welcome email builder (contains sign-in details)
+welcome-email/
+
+# local
+*.log
+.env
+.env.*
+.DS_Store
+
+# internal hand-over brief (contains live figures)
+docs/brief/

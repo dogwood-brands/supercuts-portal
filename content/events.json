@@ -1,0 +1,258 @@
+[
+  {
+    "title": "Payroll cut-off",
+    "starts_on": "2026-11-14",
+    "ends_on": "2026-11-14",
+    "kind": "payroll",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "Holiday Gift Sets display due",
+    "starts_on": "2026-11-14",
+    "ends_on": "2026-11-14",
+    "kind": "promo",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "District leader call",
+    "starts_on": "2026-11-16",
+    "ends_on": "2026-11-16",
+    "kind": "meeting",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "Managers' weekly huddle notes due",
+    "starts_on": "2026-11-17",
+    "ends_on": "2026-11-17",
+    "kind": "deadline",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "Payday",
+    "starts_on": "2026-11-20",
+    "ends_on": "2026-11-20",
+    "kind": "payroll",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "Holiday schedule posted for Thanksgiving week",
+    "starts_on": "2026-11-20",
+    "ends_on": "2026-11-20",
+    "kind": "deadline",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "Training due: Consultation standard acknowledgement",
+    "starts_on": "2026-11-22",
+    "ends_on": "2026-11-22",
+    "kind": "training",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "District leader call",
+    "starts_on": "2026-11-23",
+    "ends_on": "2026-11-23",
+    "kind": "meeting",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "Thanksgiving: salons closed",
+    "starts_on": "2026-11-26",
+    "ends_on": "2026-11-26",
+    "kind": "holiday",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "Payroll cut-off",
+    "starts_on": "2026-11-28",
+    "ends_on": "2026-11-28",
+    "kind": "payroll",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "Monthly inventory count",
+    "starts_on": "2026-11-30",
+    "ends_on": "2026-11-30",
+    "kind": "inventory",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "District leader call",
+    "starts_on": "2026-11-30",
+    "ends_on": "2026-11-30",
+    "kind": "meeting",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "December goals posted",
+    "starts_on": "2026-12-01",
+    "ends_on": "2026-12-01",
+    "kind": "deadline",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "Payday",
+    "starts_on": "2026-12-04",
+    "ends_on": "2026-12-04",
+    "kind": "payroll",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "Supercut Plus Upgrade Push ends",
+    "starts_on": "2026-12-06",
+    "ends_on": "2026-12-06",
+    "kind": "promo",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "District leader call",
+    "starts_on": "2026-12-07",
+    "ends_on": "2026-12-07",
+    "kind": "meeting",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "Training due: Cash handling acknowledgement",
+    "starts_on": "2026-12-10",
+    "ends_on": "2026-12-10",
+    "kind": "training",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "Payroll cut-off",
+    "starts_on": "2026-12-12",
+    "ends_on": "2026-12-12",
+    "kind": "payroll",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "District leader call",
+    "starts_on": "2026-12-14",
+    "ends_on": "2026-12-14",
+    "kind": "meeting",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "Winter Fresh Cut ends",
+    "starts_on": "2026-12-17",
+    "ends_on": "2026-12-17",
+    "kind": "promo",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "Payday",
+    "starts_on": "2026-12-18",
+    "ends_on": "2026-12-18",
+    "kind": "payroll",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "Color inventory check for January promo",
+    "starts_on": "2026-12-20",
+    "ends_on": "2026-12-20",
+    "kind": "inventory",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "District leader call",
+    "starts_on": "2026-12-21",
+    "ends_on": "2026-12-21",
+    "kind": "meeting",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "Christmas Eve: early close",
+    "starts_on": "2026-12-24",
+    "ends_on": "2026-12-24",
+    "kind": "holiday",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "Christmas Day: salons closed",
+    "starts_on": "2026-12-25",
+    "ends_on": "2026-12-25",
+    "kind": "holiday",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "Payroll cut-off",
+    "starts_on": "2026-12-26",
+    "ends_on": "2026-12-26",
+    "kind": "payroll",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "January mirror clings go up",
+    "starts_on": "2026-12-28",
+    "ends_on": "2026-12-28",
+    "kind": "promo",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "Year-end inventory count",
+    "starts_on": "2026-12-31",
+    "ends_on": "2026-12-31",
+    "kind": "inventory",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "Holiday Gift Sets ends",
+    "starts_on": "2026-12-31",
+    "ends_on": "2026-12-31",
+    "kind": "promo",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "New Year's Day: reduced hours",
+    "starts_on": "2027-01-01",
+    "ends_on": "2027-01-01",
+    "kind": "holiday",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "New Year Color Refresh starts",
+    "starts_on": "2027-01-02",
+    "ends_on": "2027-01-02",
+    "kind": "promo",
+    "audience_type": "company",
+    "audience_id": null
+  },
+  {
+    "title": "District leader call",
+    "starts_on": "2027-01-04",
+    "ends_on": "2027-01-04",
+    "kind": "meeting",
+    "audience_type": "company",
+    "audience_id": null
+  }
+]

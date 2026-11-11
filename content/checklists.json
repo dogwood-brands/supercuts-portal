@@ -1,0 +1,191 @@
+[
+  {
+    "key": "open",
+    "name": "Opening checklist",
+    "active": true,
+    "items": [
+      {
+        "id": "i1",
+        "label": "Alarm off, door locked behind you until open"
+      },
+      {
+        "id": "i2",
+        "label": "Walk the salon: nothing broken, wet or out of place"
+      },
+      {
+        "id": "i3",
+        "label": "Lights, music and heating or air on"
+      },
+      {
+        "id": "i4",
+        "label": "Starting cash counted and recorded"
+      },
+      {
+        "id": "i5",
+        "label": "Point of sale and check-in screen running, online list checked"
+      },
+      {
+        "id": "i6",
+        "label": "Fresh disinfectant mixed in every jar"
+      },
+      {
+        "id": "i7",
+        "label": "Clean combs, guards and capes at every station"
+      },
+      {
+        "id": "i8",
+        "label": "Towels stocked at stations and shampoo bowls"
+      },
+      {
+        "id": "i9",
+        "label": "Retail shelves full, faced and dusted"
+      },
+      {
+        "id": "i10",
+        "label": "Restroom clean and stocked, log initialled"
+      },
+      {
+        "id": "i11",
+        "label": "Entry swept and door glass cleaned"
+      },
+      {
+        "id": "i12",
+        "label": "Today's announcements and promos read in the portal"
+      },
+      {
+        "id": "i13",
+        "label": "Door unlocked on time"
+      }
+    ]
+  },
+  {
+    "key": "close",
+    "name": "Closing checklist",
+    "active": true,
+    "items": [
+      {
+        "id": "i1",
+        "label": "Door locked at close, guests inside finished properly"
+      },
+      {
+        "id": "i2",
+        "label": "End of day report run"
+      },
+      {
+        "id": "i3",
+        "label": "Drawer counted, second person where possible"
+      },
+      {
+        "id": "i4",
+        "label": "Deposit prepared, bag number and amount recorded"
+      },
+      {
+        "id": "i5",
+        "label": "All stations, chairs and tools cleaned and disinfected"
+      },
+      {
+        "id": "i6",
+        "label": "Shampoo bowls cleaned and disinfected"
+      },
+      {
+        "id": "i7",
+        "label": "Whole floor swept and mopped, including under stations"
+      },
+      {
+        "id": "i8",
+        "label": "Towels washed and in the dryer, none left wet"
+      },
+      {
+        "id": "i9",
+        "label": "Trash emptied and bins relined"
+      },
+      {
+        "id": "i10",
+        "label": "Retail and back bar restocked"
+      },
+      {
+        "id": "i11",
+        "label": "Restroom cleaned"
+      },
+      {
+        "id": "i12",
+        "label": "Tools, dryers and irons switched off and unplugged"
+      },
+      {
+        "id": "i13",
+        "label": "Heating or air set to after-hours"
+      },
+      {
+        "id": "i14",
+        "label": "Back door locked, alarm set, front door locked"
+      }
+    ]
+  },
+  {
+    "key": "weekly",
+    "name": "Weekly deep clean",
+    "active": true,
+    "items": [
+      {
+        "id": "i1",
+        "label": "Pull chairs out and clean chair bases and floor mats"
+      },
+      {
+        "id": "i2",
+        "label": "Wipe baseboards and corners along every wall"
+      },
+      {
+        "id": "i3",
+        "label": "Clean all mirrors edge to edge, including frames"
+      },
+      {
+        "id": "i4",
+        "label": "Empty, wash and refill every disinfectant jar"
+      },
+      {
+        "id": "i5",
+        "label": "Clean inside station drawers and tool holders"
+      },
+      {
+        "id": "i6",
+        "label": "Descale and scrub shampoo bowls and sprayers"
+      },
+      {
+        "id": "i7",
+        "label": "Clean clipper blades, oil and check for wear"
+      },
+      {
+        "id": "i8",
+        "label": "Wipe retail shelves top to bottom, rotate older stock forward"
+      },
+      {
+        "id": "i9",
+        "label": "Clean front desk, card reader and check-in screen"
+      },
+      {
+        "id": "i10",
+        "label": "Dust light fixtures, vents and the top of shelving"
+      },
+      {
+        "id": "i11",
+        "label": "Clean inside and outside of front windows and door"
+      },
+      {
+        "id": "i12",
+        "label": "Clean washer filter and dryer lint trap, wipe both machines"
+      },
+      {
+        "id": "i13",
+        "label": "Tidy back room: flatten boxes, organize supplies"
+      },
+      {
+        "id": "i14",
+        "label": "Check first aid kit, fire extinguisher tag and exit lights"
+      },
+      {
+        "id": "i15",
+        "label": "Review licences and postings are current and visible"
+      }
+    ]
+  }
+]

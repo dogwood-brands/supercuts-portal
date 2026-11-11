@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.dogwood.supercuts-portal-sales</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/dogwoodbrandscompany/dogwood-agents/supercuts-portal/scripts/refresh-sales.sh</string>
+  </array>
+  <!-- Central time (this Mac's clock). Keep in step with RUN_TIMES in server/refresh.js -->
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict><key>Hour</key><integer>11</integer><key>Minute</key><integer>20</integer></dict>
+    <dict><key>Hour</key><integer>15</integer><key>Minute</key><integer>20</integer></dict>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+  <key>StandardErrorPath</key>
+  <string>/Users/dogwoodbrandscompany/dogwood-agents/logs/supercuts-portal-sales.err.log</string>
+</dict>
+</plist>

@@ -1,0 +1,98 @@
+[
+  {
+    "title": "Winter Fresh Cut",
+    "summary": "Sample offer: $3 off any haircut for guests who check in online, Monday to Thursday.",
+    "body": "## What it is\nA weekday offer to fill slower days before the holiday rush. Guests who check in online Monday to Thursday get $3 off any haircut.\n\n## How to ring it\n1. Confirm the guest checked in online (it shows on the check-in list).\n2. Apply the **Winter Fresh** discount at checkout. One per guest per visit.\n3. It does not stack with other haircut discounts. Use whichever is better for the guest.\n\n## What to say\n\"Since you checked in online today, you get three dollars off. Want me to show you how to save your spot next time too?\"\n\n## Watch for\n- Friday to Sunday visits do not qualify.\n- Walk-ins do not qualify, but help them check in online for next time.\n\n## Goal\nLift weekday guest count 5% versus the same weeks last year.",
+    "image_url": "/media/promo-seasonal-cut.webp",
+    "starts_on": "2026-11-02",
+    "ends_on": "2026-12-17",
+    "tag": "Haircut",
+    "audience": "company",
+    "status": "active",
+    "sort": 1
+  },
+  {
+    "title": "Holiday Gift Sets",
+    "summary": "Sample offer: buy any two full-size products, get a travel size free. Gift boxes at the front desk.",
+    "body": "## What it is\nBuy any two full-size retail products and the guest picks a travel size free. Gift boxes and tissue are at the front desk for anyone buying a present.\n\n## Set up\n1. Build the gift display on the top two retail shelves by November 14.\n2. Keep six boxed sets ready at all times. Rebuild at open and at 3 pm.\n3. Travel sizes stay behind the desk. Hand one over at checkout.\n\n## How to ring it\nScan both full-size items, then scan the travel size and apply **Holiday Set**. The travel size rings at zero.\n\n## What to say\n\"We have gift sets ready to go if you still need something for someone. I can box it for you while you pay.\"\n\n## Goal\nProduct at 12% of net sales for the promo period.",
+    "image_url": "/media/promo-holiday-gifts.webp",
+    "starts_on": "2026-11-14",
+    "ends_on": "2026-12-31",
+    "tag": "Retail",
+    "audience": "company",
+    "status": "active",
+    "sort": 2
+  },
+  {
+    "title": "Supercut Plus Upgrade Push",
+    "summary": "Offer the shampoo and scalp massage upgrade to every haircut guest. Top three salons by Plus count win lunch.",
+    "body": "## What it is\nA six week focus on offering the Supercut Plus upgrade (shampoo, scalp massage and finish) to every haircut guest.\n\n## The ask\nOffer it during the consultation, before the cape goes on. Not at the register.\n\n\"Would you like to start with a shampoo and scalp massage today? It takes about five minutes and it makes the cut sit better.\"\n\n## Contest\n- Salon with the highest Plus count per 100 haircuts each week gets a shout-out on the home feed.\n- Top three salons for the full six weeks get lunch for the whole team.\n- Counts come straight from the daily sales report. Nothing to track by hand.\n\n## Tips from salons that do this well\n1. Ask every guest. The ones you skip are the ones who would have said yes.\n2. Keep the shampoo bowl spotless and towels stocked so it is easy to say yes.\n3. Managers: post your count on the back room board daily.",
+    "image_url": "/media/promo-supercut-plus.webp",
+    "starts_on": "2026-10-26",
+    "ends_on": "2026-12-06",
+    "tag": "Service",
+    "audience": "company",
+    "status": "active",
+    "sort": 3
+  },
+  {
+    "title": "Refer a Friend",
+    "summary": "Sample offer: give a friend $5 off their first visit and get $5 off your next one.",
+    "body": "## What it is\nEvery guest leaves with a referral card. When a new guest brings it in, they get $5 off their first haircut and the guest who referred them gets $5 off their next visit.\n\n## How it works\n1. Write your name and the referring guest's first name on the card.\n2. New guest hands in the card. Apply **Referral New** at checkout.\n3. Drop the card in the envelope by the register. The referring guest's credit is added to their profile within two days.\n\n## What to say\n\"If you know anyone who needs a good haircut, this card gets them five off, and you get five off next time.\"\n\n## Goal\n30 new guests per salon over the quarter.",
+    "image_url": "/media/promo-refer-friend.webp",
+    "starts_on": "2026-10-01",
+    "ends_on": "2026-12-31",
+    "tag": "Referral",
+    "audience": "company",
+    "status": "active",
+    "sort": 4
+  },
+  {
+    "title": "New Year Color Refresh",
+    "summary": "Sample offer: $10 off any gloss or color service booked in January.",
+    "body": "## What it is\nJanuary is slow for haircuts and good for color. Guests get $10 off any gloss or color service during the month.\n\n## Before it starts\n1. Managers confirm which stylists on the roster take color guests and update the schedule notes.\n2. Check color inventory against the January order guide by December 20.\n3. Hang the mirror clings on December 28.\n\n## What to say\n\"We are doing ten off color and gloss in January. Want me to pencil you in for your next visit?\"\n\n## Goal\nColor services at 6% of service sales for January.",
+    "image_url": "/media/promo-color-refresh.webp",
+    "starts_on": "2027-01-02",
+    "ends_on": "2027-01-31",
+    "tag": "Color",
+    "audience": "company",
+    "status": "upcoming",
+    "sort": 5
+  },
+  {
+    "title": "Men's Grooming Month",
+    "summary": "Beard trim add-on focus plus a sample bundle on men's styling products in February.",
+    "body": "## What it is\nA month focused on beard trims and men's styling. Sample offer: beard trim for $5 when added to any haircut, and 20% off two men's styling products.\n\n## Before it starts\n1. Every stylist completes the beard and neckline refresher video in SC Tube by January 25.\n2. Stock the men's shelf at eye level by January 30.\n\n## What to say\n\"Want me to clean up the beard line while you are here? It is five dollars with the cut this month.\"\n\n## Goal\nBeard trim add-on on 15% of men's haircuts.",
+    "image_url": "/media/promo-mens-grooming.webp",
+    "starts_on": "2027-02-01",
+    "ends_on": "2027-02-28",
+    "tag": "Service",
+    "audience": "company",
+    "status": "upcoming",
+    "sort": 6
+  },
+  {
+    "title": "Back to School",
+    "summary": "Sample offer: kids' cuts $2 off through Labor Day. Ended September 7.",
+    "body": "## What it was\n$2 off kids' haircuts from August 3 through September 7, with a free comb for every child.\n\n## Results (sample)\n- Kids' haircuts up 9% versus the same weeks last year.\n- Best day: Saturday, August 15.\n- Top salons: see the Scoreboard for the August period.\n\n## What we learned\n1. Salons that staffed an extra stylist on Saturdays kept waits under 15 minutes and won the month.\n2. Parents bought product when stylists showed them how to style the cut at home.\n3. Start the display one week earlier next year.",
+    "image_url": "/media/promo-back-to-school.webp",
+    "starts_on": "2026-08-03",
+    "ends_on": "2026-09-07",
+    "tag": "Haircut",
+    "audience": "company",
+    "status": "past",
+    "sort": 7
+  },
+  {
+    "title": "Summer Product Bundle",
+    "summary": "Sample offer: shampoo and conditioner together for $5 off. Ended August 31.",
+    "body": "## What it was\nAny shampoo and conditioner purchased together for $5 off, June 15 through August 31.\n\n## Results (sample)\n- Product reached 11.4% of net sales, up from 9.8% in spring.\n- Stylists who recommended a product in the chair sold three times more than those who waited for the register.\n\n## Keep doing\n1. Recommend during the cut, when the guest can feel and smell the product.\n2. Walk the product to the register yourself.",
+    "image_url": "/media/promo-product-bundle.webp",
+    "starts_on": "2026-06-15",
+    "ends_on": "2026-08-31",
+    "tag": "Retail",
+    "audience": "company",
+    "status": "past",
+    "sort": 8
+  }
+]

@@ -1,0 +1,25 @@
+{
+  "name": "sc-portal",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SC Portal: employee and leadership portal for the SC Entities Supercuts salons",
+  "main": "server/index.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "migrate": "node server/migrate.js",
+    "seed": "node server/seed/run.js",
+    "seed:reset": "node server/seed/run.js --reset",
+    "test": "node --test test/*.test.js",
+    "backup": "sh scripts/backup.sh"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.10.0",
+    "compression": "^1.8.1",
+    "express": "^4.22.3",
+    "express-rate-limit": "^7.5.1",
+    "helmet": "^8.3.0"
+  }
+}

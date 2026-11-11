@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="SC Portal">
+  <rect width="512" height="512" rx="112" fill="#141414"/>
+  <text x="246" y="330" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="700" font-size="232" letter-spacing="-10" fill="#ffffff">SC</text>
+  <circle cx="404" cy="312" r="22" fill="#c9aa7c"/>
+</svg>

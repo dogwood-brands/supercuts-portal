@@ -1,0 +1,249 @@
+/* Scoreboard */
+
+.score-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+  margin-bottom: var(--s-3);
+}
+.score-metric-select {
+  display: none;
+  width: auto;
+  flex: 1;
+  min-width: 150px;
+  height: 38px;
+  font-size: var(--fs-14);
+}
+.score-blurb {
+  margin-bottom: var(--s-6);
+  min-height: 20px;
+}
+.score-glyph {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--ink-2);
+  flex: none;
+}
+
+/* podium */
+.podium {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-4);
+  align-items: end;
+  max-width: 860px;
+  margin: 0 auto;
+}
+.podium-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 2px;
+  padding: var(--s-5) var(--s-3) 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+  min-width: 0;
+  transition: transform var(--t-med) var(--ease), box-shadow var(--t-med) var(--ease), opacity var(--t-slow) var(--ease);
+}
+a.podium-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-2);
+}
+.podium-card > * {
+  max-width: 100%;
+}
+.podium-pic {
+  position: relative;
+  margin-bottom: var(--s-3);
+}
+.podium-place {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  color: #fff;
+  font-size: var(--fs-12);
+  font-weight: 800;
+  border: 2px solid var(--surface);
+}
+.podium-1 .podium-place {
+  background: var(--brand);
+  width: 30px;
+  height: 30px;
+  font-size: var(--fs-14);
+}
+.podium-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-15);
+}
+.podium-1 .podium-name {
+  font-size: var(--fs-18);
+}
+.podium-value {
+  font-size: var(--fs-22);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-top: var(--s-3);
+}
+.podium-1 .podium-value {
+  font-size: var(--fs-28);
+}
+.podium-delta {
+  min-height: 20px;
+}
+.podium-step {
+  align-self: stretch;
+  max-width: none;
+  margin: var(--s-4) calc(var(--s-3) * -1) 0;
+  height: 14px;
+  background: var(--surface-3);
+}
+.podium-2 .podium-step {
+  height: 30px;
+}
+.podium-1 .podium-step {
+  height: 50px;
+  background: var(--ink);
+}
+.podium-card.is-me {
+  border-color: var(--brand);
+}
+
+/* ranked list */
+.score-list {
+  overflow: hidden;
+}
+.score-row {
+  display: grid;
+  grid-template-columns: 28px auto minmax(0, 1.2fr) minmax(80px, 1fr) minmax(110px, auto);
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-5);
+  min-height: 60px;
+  border-bottom: 1px solid var(--line);
+  transition: background var(--t-fast) var(--ease);
+}
+.score-row:last-child {
+  border-bottom: 0;
+}
+a.score-row:hover {
+  background: var(--surface-2);
+}
+.score-row.is-me {
+  background: var(--brand-soft);
+}
+.score-who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+.score-who .t-strong {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+.score-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.score-bar-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 3px;
+  background: var(--ink);
+  transition: width 800ms var(--ease);
+}
+.score-row.is-me .score-bar {
+  background: #e9dcc6;
+}
+.score-row.is-me .score-bar-fill {
+  background: var(--brand);
+}
+.score-val {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  white-space: nowrap;
+}
+.score-pin {
+  position: sticky;
+  bottom: var(--s-4);
+  margin-top: var(--s-4);
+  z-index: 5;
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-3);
+  overflow: hidden;
+  border: 1px solid var(--brand);
+  animation: rise-in var(--t-med) var(--ease);
+}
+.score-pin .score-row {
+  background: var(--surface);
+}
+
+@media (max-width: 960px) {
+  .score-pin {
+    bottom: calc(var(--tabbar-h) + var(--s-3) + var(--safe-b));
+  }
+}
+@media (max-width: 1100px) {
+  .score-metric-seg {
+    display: none;
+  }
+  .score-metric-select {
+    display: block;
+  }
+}
+@media (max-width: 760px) {
+  .podium {
+    gap: var(--s-2);
+  }
+  .podium-card {
+    padding: var(--s-4) var(--s-2) 0;
+  }
+  .podium-name,
+  .podium-1 .podium-name {
+    font-size: var(--fs-13);
+  }
+  .podium-value,
+  .podium-1 .podium-value {
+    font-size: var(--fs-16);
+  }
+  .podium-step {
+    margin-left: calc(var(--s-2) * -1);
+    margin-right: calc(var(--s-2) * -1);
+  }
+  .podium-card .avatar,
+  .podium-card .score-glyph {
+    --size: 48px;
+    width: 48px !important;
+    height: 48px !important;
+  }
+  .score-row {
+    grid-template-columns: 24px auto minmax(0, 1fr) auto;
+    padding: var(--s-3) var(--s-4);
+  }
+}
+
+/* Core gap (reported to the lead): .user-chip-text children are spans and need to stack. Safe to delete once components.css has it. */
+.user-chip-text {
+  display: flex;
+  flex-direction: column;
+}

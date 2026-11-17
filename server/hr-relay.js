@@ -5,7 +5,7 @@
 // Delivery is by email to settings.hr_inbox_email (default HR@scsalons.com) through the Gmail API, when these
 // environment variables are set (no extra dependencies, plain HTTPS):
 //   SCP_MAIL_CLIENT_ID, SCP_MAIL_CLIENT_SECRET, SCP_MAIL_REFRESH_TOKEN   OAuth client + refresh token of the sending mailbox
-//   SCP_MAIL_FROM                                                        that mailbox's address, e.g. portal@scsalons.com
+//   SCP_MAIL_FROM                                                        the sending address: HR@scsalons.com itself (decided 2026-11-17, no new mailbox)
 // Until they are set, HR and admins see waiting messages in the portal's HR inbox and clear each one by
 // hand after copying it into the HR inbox ("Moved to HR inbox"), which deletes it from the portal.
 const { json, nowIso } = require('./util');

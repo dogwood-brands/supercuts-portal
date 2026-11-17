@@ -39,6 +39,8 @@ const COLLECTIONS = {
       [{ name: 'tag', label: 'Tag', maxLength: 40, placeholder: 'Haircut, Retail, Service' },
         { name: 'status', label: 'Status', type: 'select', default: 'published', options: [{ value: 'published', label: 'Published' }, { value: 'draft', label: 'Draft. Hidden from the team' }, { value: 'archived', label: 'Archived' }] }],
       { name: 'image_url', label: 'Image', type: 'image' },
+      { name: 'video_url', label: 'Explainer video', type: 'video', hint: 'A short clip of a stylist or district leader walking through the offer. Upload a file or paste a YouTube link.' },
+      { name: 'video_poster_url', label: 'Video thumbnail', type: 'image', hint: 'Shown before the video plays. Leave empty to use the promo image.' },
       { name: 'body', label: 'Details', type: 'textarea', rows: 10, maxLength: 20000, hint: 'Use "## Heading" for sections, "1." for steps and "-" for bullets. Cover what it is, how to ring it and what to say.' },
       { name: 'sort', label: 'Order', type: 'number', default: 0, hint: 'Lower numbers show first.' },
     ],

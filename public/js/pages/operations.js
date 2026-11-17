@@ -22,6 +22,7 @@ const kindOf = (k) => EVENT_KINDS[k] || [k ? k[0].toUpperCase() + k.slice(1) : '
 function checklistCard({ template, run }, { salonId, date, canSignOff, editable, onChange }) {
   const items = template.items || [];
   const done = new Set((run.done || []).map(String));
+  let doneBy = run.done_by || {}; // who ticked each item in the portal (v1.1)
   let completed = run.completed_at ? { at: run.completed_at, by: run.completed_by } : null;
   let timer = null;
   let saving = false;
@@ -65,6 +66,7 @@ function checklistCard({ template, run }, { salonId, date, canSignOff, editable,
       const res = await api.put(`/checklists/${template.id}/run`, { salon_id: salonId, date, done: [...done], complete });
       const r = res.run || {};
       completed = r.completed_at ? { at: r.completed_at, by: r.completed_by } : null;
+      if (r.done_by) { doneBy = r.done_by; paintWho(); }
       saved.textContent = 'Saved';
       if (complete && completed) ui.toast(`${template.name} signed off.`, 'good');
       paintHead();
@@ -79,8 +81,18 @@ function checklistCard({ template, run }, { salonId, date, canSignOff, editable,
     }
   }
 
+  const whoEls = new Map();
+  const paintWho = () => {
+    for (const [id, el] of whoEls) {
+      const w = done.has(id) ? doneBy[id] : null;
+      el.textContent = w && w.by ? `${w.by.name} · ${new Date(w.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : done.has(id) ? '' : 'Not ticked in the portal';
+      el.classList.toggle('is-open', !done.has(id));
+    }
+  };
   const list = h('ul', { class: 'checklist-items' }, items.map((item) => {
     const id = String(item.id);
+    const who = h('span', { class: 't-xs t-faint checklist-who' });
+    whoEls.set(id, who);
     const input = h('input', { type: 'checkbox', checked: done.has(id), disabled: !editable });
     input.addEventListener('change', () => {
       if (input.checked) done.add(id); else done.delete(id);
@@ -90,8 +102,9 @@ function checklistCard({ template, run }, { salonId, date, canSignOff, editable,
       clearTimeout(timer);
       timer = setTimeout(() => save(false), 600);
     });
-    return h('li', null, h('label', { class: 'checkbox' }, input, h('span', null, item.label)));
+    return h('li', null, h('label', { class: 'checkbox' }, input, h('span', null, item.label, who)));
   }));
+  paintWho();
 
   card.appendChild(h('div', { class: 'checklist-progress' }, bar));
   card.appendChild(list);
@@ -103,7 +116,7 @@ function checklistCard({ template, run }, { salonId, date, canSignOff, editable,
 
 function checklistsView(ctx, live) {
   const u = ctx.user;
-  const canSignOff = u.role !== 'stylist';
+  const canSignOff = u.role !== 'stylist'; // shift managers tick items; a salon manager or above signs off
   const host = h('div');
   const controls = h('div', { class: 'toolbar' });
   const state = { salonId: u.salon ? u.salon.id : null, date: today(), salons: [] };
@@ -249,7 +262,9 @@ export default {
   css: true,
   render(ctx) {
     const body = h('div');
-    let tab = ctx.query.tab === 'calendar' ? 'calendar' : 'checklists';
+    // Checklists are for shift managers and above (v1.1); everyone else gets the calendar.
+    const canChecklists = ctx.can('checklists');
+    let tab = ctx.query.tab === 'calendar' || !canChecklists ? 'calendar' : 'checklists';
     const paint = () => {
       live.cards.forEach((c) => c.flush && c.flush());
       live.cards = [];
@@ -257,8 +272,10 @@ export default {
     };
     paint();
     return h('div', null,
-      ui.pageHeader({ eyebrow: 'Run the salon', title: 'Operations', sub: 'The same open, the same close, every day, in every salon. Plus the dates that matter this month.' }),
-      ui.tabs([{ key: 'checklists', label: 'Checklists' }, { key: 'calendar', label: 'Calendar' }], tab, (k) => { tab = k; paint(); }),
+      ui.pageHeader(canChecklists
+        ? { eyebrow: 'Run the salon', title: 'Checklists', sub: 'The same open, the same close, every day, in every salon. Plus the dates that matter this month.' }
+        : { eyebrow: 'Run the salon', title: 'Calendar', sub: 'The dates that matter this month.' }),
+      canChecklists ? ui.tabs([{ key: 'checklists', label: 'Checklists' }, { key: 'calendar', label: 'Calendar' }], tab, (k) => { tab = k; paint(); }) : null,
       body);
   },
   teardown() {

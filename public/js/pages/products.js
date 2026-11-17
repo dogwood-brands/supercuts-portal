@@ -22,7 +22,7 @@ function openProduct(r) {
 }
 
 export default {
-  title: 'Products',
+  title: 'Products and shelf',
   css: true,
   render() {
     const host = h('div');
@@ -58,7 +58,7 @@ export default {
       return view();
     });
     return h('div', null,
-      ui.pageHeader({ eyebrow: 'Sell', title: 'Products', sub: 'Know what is on the shelf. Guests buy what their stylist used and can explain in one sentence.' }),
+      ui.pageHeader({ eyebrow: 'Excellence', title: 'Products and shelf standards', sub: 'Know what is on the shelf and how the shelf is set. Guests buy what their stylist used and can explain in one sentence.' }),
       filters,
       host);
   },

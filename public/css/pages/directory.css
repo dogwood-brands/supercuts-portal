@@ -1,1 +1,32 @@
 @import url("/css/pages/modules.css");
+
+/* v1.1 salons by state */
+.dir-salons > .dir-salon + .dir-salon {
+  border-top: 1px solid var(--line);
+}
+.dir-salon {
+  display: grid;
+  grid-template-columns: minmax(160px, 1.1fr) minmax(200px, 2fr) minmax(180px, 1.4fr) minmax(140px, 1fr);
+  gap: var(--s-2) var(--s-4);
+  align-items: center;
+  padding: var(--s-3) var(--s-4);
+}
+.dir-salon-name {
+  color: var(--ink);
+  text-decoration: none;
+}
+.dir-salon-name:hover .t-strong {
+  text-decoration: underline;
+}
+.dir-salon-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+@media (max-width: 900px) {
+  .dir-salon {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s-1);
+  }
+}

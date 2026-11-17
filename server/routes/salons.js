@@ -1,6 +1,6 @@
 'use strict';
 const express = require('express');
-const { can, isManagerPlus } = require('../rbac');
+const { can, isManagerPlus, canChecklists } = require('../rbac');
 const { v, bad, forbidden, notFound, idParam, nowIso, addDays, todayLocal, json, round1, pctChange } = require('../util');
 const { tenureLabel } = require('../shape');
 const { refreshInfo } = require('../refresh');
@@ -9,18 +9,21 @@ module.exports = (ctx) => {
   const { db, rbac, shapes, kpi, audit } = ctx;
   const r = express.Router();
 
-  const SALON_SQL = `SELECT s.*, m.name AS market_name, d.name AS district_name, e.code AS entity_code
+  const SALON_SQL = `SELECT s.*, m.name AS market_name, d.name AS district_name, d.leader_user_id AS district_leader_id,
+      e.code AS entity_code, e.legal_name AS entity_name
     FROM salons s LEFT JOIN markets m ON m.id = s.market_id LEFT JOIN districts d ON d.id = s.district_id LEFT JOIN entities e ON e.id = s.entity_id`;
 
   function cards(rows, user) {
     const m = kpi.metrics();
-    const managers = shapes.usersByIds(rows.map((s) => s.manager_user_id).filter(Boolean));
+    const managers = shapes.usersByIds(rows.flatMap((s) => [s.manager_user_id, s.district_leader_id]).filter(Boolean));
     return rows.map((s) => {
       const x = m.bySalon.get(s.id);
       return {
         id: s.id, salon_number: s.salon_number, name: s.name, concept: s.concept, city: s.city, state: s.state,
         market: s.market_name || null, district: s.district_name || null,
         manager: s.manager_user_id ? managers.get(s.manager_user_id) || null : null,
+        district_leader: s.district_leader_id ? managers.get(s.district_leader_id) || null : null,
+        entity_name: s.entity_name || null,
         photo_url: s.photo_url || null,
         pace_pct: x ? x.block.goal.pace_pct : null,
         rank_company: x ? x.rank_company : null,
@@ -29,6 +32,15 @@ module.exports = (ctx) => {
     });
   }
   ctx.salonCards = cards;
+  /** Rank by net revenue month to date: company, state, district (and market, kept for the scoreboard). */
+  const rankOf = (x) => ({
+    basis: 'net_sales',
+    company: x.rank_company, of_company: x.of_company,
+    state: x.rank_state, of_state: x.of_state, state_code: x.salon.state,
+    district: x.rank_district, of_district: x.of_district,
+    market: x.rank_market, of_market: x.of_market,
+  });
+  ctx.rankOf = rankOf;
   ctx.SALON_SQL = SALON_SQL;
 
   r.get('/salons', (req, res) => {
@@ -47,8 +59,10 @@ module.exports = (ctx) => {
       ORDER BY CASE role WHEN 'salon_manager' THEN 0 ELSE 1 END, first_name, last_name`).all(s.id);
     const users = shapes.usersByIds(teamRows.map((t) => t.id));
     const alerts = { people: [], store: [], initiative: [] };
+    const seesStore = canChecklists(req.user);
     if (inScope) {
       for (const a of db.prepare('SELECT id, group_key, label, state, due_on, updated_at FROM alerts WHERE salon_id = ? ORDER BY id').all(s.id)) {
+        if (a.group_key === 'store' && !seesStore) continue; // store alerts follow checklist access (v1.1)
         alerts[a.group_key].push({ id: a.id, label: a.label, state: a.state, due_on: a.due_on, updated_at: a.updated_at });
       }
     }
@@ -56,12 +70,13 @@ module.exports = (ctx) => {
       salon: {
         ...cards([s], req.user)[0],
         address: s.address, zip: s.zip, phone: s.phone, shopping_center: s.shopping_center,
-        hours: json(s.hours_json, null), entity: s.entity_code || null, lat: s.lat, lng: s.lng, opened_on: s.opened_on,
+        hours: json(s.hours_json, null), entity: s.entity_code || null, email: s.email || null, lat: s.lat, lng: s.lng, opened_on: s.opened_on,
       },
       team: teamRows.map((t) => ({ ...users.get(t.id), tenure_label: tenureLabel(t.hire_date, today) })),
       kpis: inScope && x ? x.block : null,
       boxes: inScope && x ? x.boxes : [],
-      rank: x ? { score: x.score, district: x.rank_district, market: x.rank_market, company: x.rank_company, of_company: m.bySalon.size } : null,
+      rank: x ? rankOf(x) : null,
+      haircuts: inScope && x ? x.haircuts : null,
       alerts,
       updated_through: m.through,
       refresh: refreshInfo(db),
@@ -144,9 +159,18 @@ module.exports = (ctx) => {
       service_c: b ? b.mtd.service_c : 0, product_c: b ? b.mtd.product_c : 0, guests: b ? b.mtd.guests : 0, hours: b ? b.mtd.hours : 0,
       srph_c: b ? b.mtd.srph_c : 0, product_pct: b ? b.mtd.product_pct : 0,
       pace_pct: b ? b.goal.pace_pct : null,
+      sales_goal_c: b ? b.goal.sales_goal_c : null,
+      projected_c: b ? b.goal.projected_c : null,
+      atv_c: b ? b.mtd.atv_c : 0,
+      haircuts_mtd: b ? b.mtd.haircuts : 0,
+      supercut_plus: b ? b.mtd.supercut_plus : 0,
+      supercut_plus_pct: b && b.mtd.haircuts > 0 ? round1((b.mtd.supercut_plus / b.mtd.haircuts) * 100) : null,
+      haircuts: x ? x.haircuts : null,
+      rank: x ? rankOf(x) : null,
       rank_salon: null,
       rank_company: x ? x.rank_company : null,
       of_company: m.bySalon.size,
+      updated_through: m.through,
       shoutouts_received: shoutouts,
       streak_days: 0,
       trend,
@@ -187,7 +211,7 @@ module.exports = (ctx) => {
         net_sales_c: b.mtd.net_sales_c, pace_pct: b.goal.pace_pct, guests: b.mtd.guests, atv_c: b.mtd.atv_c, srph_c: b.mtd.srph_c,
         product_pct: b.mtd.product_pct, wow_pct: b.wow.net_sales_pct, salons: list.length,
       };
-    }).sort((a, b) => (b.pace_pct ?? -1) - (a.pace_pct ?? -1));
+    }).sort((a, b) => b.net_sales_c - a.net_sales_c);
     res.json({
       period: m.period, updated_through: m.through, refresh: refreshInfo(db), level,
       totals: ids.length ? kpi.rollup(ids) : null,
@@ -198,7 +222,7 @@ module.exports = (ctx) => {
 
   // ---- leaderboards -------------------------------------------------------
   r.get('/leaderboards', (req, res) => {
-    const metric = v.oneOf(req.query.metric || 'pace', 'metric', ['pace', 'sales', 'atv', 'product_pct', 'srph', 'recognition']);
+    const metric = v.oneOf(req.query.metric || 'sales', 'metric', ['pace', 'sales', 'atv', 'product_pct', 'srph', 'recognition']);
     const group = v.oneOf(req.query.group || 'salon', 'group', ['salon', 'stylist', 'district']);
     const period = v.oneOf(req.query.period || 'mtd', 'period', ['mtd', 'wtd']);
     const m = kpi.metrics();

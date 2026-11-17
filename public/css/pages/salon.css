@@ -599,3 +599,10 @@ button.alert-row:active .alert-mark {
   color: var(--night-ink);
   font-weight: 600;
 }
+
+/* v1.1: five figures in the hero when last year's haircuts are loaded */
+@media (min-width: 1101px) {
+  .salon-hero-minis:has(> :nth-child(5)) {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}

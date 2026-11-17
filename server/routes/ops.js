@@ -1,6 +1,6 @@
 'use strict';
 const express = require('express');
-const { can, isManagerPlus, HOME_OFFICE } = require('../rbac');
+const { can, isManagerPlus, canChecklists, HOME_OFFICE } = require('../rbac');
 const { v, bad, forbidden, notFound, idParam, nowIso, todayLocal, addDays, json } = require('../util');
 
 const CATEGORIES = ['it', 'facilities', 'supplies', 'marketing'];
@@ -12,6 +12,8 @@ module.exports = (ctx) => {
   const r = express.Router();
 
   // ---- checklists ---------------------------------------------------------
+  // Checklists are for shift managers and above (v1.1). Stylists do not see them. (Tickets stay open to everyone.)
+  const requireChecklists = (req) => { if (!canChecklists(req.user)) throw forbidden('Checklists are completed by shift managers and above.'); };
   function salonForRequest(req, raw) {
     const id = v.int(raw ?? req.user.salon_id, 'Salon', { min: 1 });
     if (!db.prepare('SELECT 1 FROM salons WHERE id = ?').get(id)) throw notFound('We could not find that salon.');
@@ -20,18 +22,24 @@ module.exports = (ctx) => {
   }
 
   r.get('/checklists', (req, res) => {
+    requireChecklists(req);
     const salonId = salonForRequest(req, req.query.salon_id);
     const date = v.date(req.query.date, 'date', { required: false }) || todayLocal();
     const templates = db.prepare('SELECT * FROM checklist_templates WHERE active = 1 ORDER BY id').all();
     const runs = new Map(db.prepare('SELECT * FROM checklist_runs WHERE salon_id = ? AND date = ?').all(salonId, date).map((x) => [x.template_id, x]));
-    const users = shapes.usersByIds([...runs.values()].map((x) => x.completed_by).filter(Boolean));
+    const doneBy = (run) => (run ? json(run.done_by_json, {}) : {});
+    const users = shapes.usersByIds([...runs.values()].flatMap((x) => [x.completed_by, ...Object.values(doneBy(x)).map((d) => d.by)]).filter(Boolean));
     res.json({
       salon_id: salonId, date,
       items: templates.map((t) => {
         const run = runs.get(t.id);
         return {
           template: { id: t.id, key: t.key, name: t.name, items: json(t.items_json, []) },
-          run: { done: run ? json(run.done_json, []) : [], completed_at: run?.completed_at || null, completed_by: run?.completed_by ? users.get(run.completed_by) || null : null },
+          run: {
+            done: run ? json(run.done_json, []) : [], completed_at: run?.completed_at || null, completed_by: run?.completed_by ? users.get(run.completed_by) || null : null,
+            // who ticked each item, so the salon can see what was and was not checked off in the portal
+            done_by: Object.fromEntries(Object.entries(doneBy(run)).map(([k, d]) => [k, { by: users.get(d.by) || null, at: d.at }])),
+          },
         };
       }),
     });
@@ -40,6 +48,7 @@ module.exports = (ctx) => {
   r.put('/checklists/:templateId/run', (req, res) => {
     const t = db.prepare('SELECT * FROM checklist_templates WHERE id = ? AND active = 1').get(idParam(req, 'templateId'));
     if (!t) throw notFound('We could not find that checklist.');
+    requireChecklists(req);
     const b = req.body || {};
     const salonId = salonForRequest(req, b.salon_id);
     const date = v.date(b.date, 'Date', { required: false }) || todayLocal();
@@ -54,11 +63,16 @@ module.exports = (ctx) => {
     const existing = db.prepare('SELECT * FROM checklist_runs WHERE template_id = ? AND salon_id = ? AND date = ?').get(t.id, salonId, date);
     const completedAt = complete ? existing?.completed_at || nowIso() : null;
     const completedBy = complete ? existing?.completed_by || req.user.id : null;
-    db.prepare(`INSERT INTO checklist_runs (template_id, salon_id, date, done_json, completed_by, completed_at) VALUES (?,?,?,?,?,?)
-      ON CONFLICT(template_id, salon_id, date) DO UPDATE SET done_json = excluded.done_json, completed_by = excluded.completed_by, completed_at = excluded.completed_at`)
-      .run(t.id, salonId, date, JSON.stringify(done), completedBy, completedAt);
+    const prevBy = existing ? json(existing.done_by_json, {}) : {};
+    const nowAt = nowIso();
+    const doneBy = Object.fromEntries(done.map((i) => [i, prevBy[i] || { by: req.user.id, at: nowAt }]));
+    db.prepare(`INSERT INTO checklist_runs (template_id, salon_id, date, done_json, done_by_json, completed_by, completed_at) VALUES (?,?,?,?,?,?,?)
+      ON CONFLICT(template_id, salon_id, date) DO UPDATE SET done_json = excluded.done_json, done_by_json = excluded.done_by_json, completed_by = excluded.completed_by, completed_at = excluded.completed_at`)
+      .run(t.id, salonId, date, JSON.stringify(done), JSON.stringify(doneBy), completedBy, completedAt);
     if (complete !== !!existing?.completed_at) kpi.invalidate();
-    res.json({ run: { done, completed_at: completedAt, completed_by: completedBy ? shapes.userById(completedBy) : null } });
+    const byUsers = shapes.usersByIds(Object.values(doneBy).map((d) => d.by));
+    res.json({ run: { done, completed_at: completedAt, completed_by: completedBy ? shapes.userById(completedBy) : null,
+      done_by: Object.fromEntries(Object.entries(doneBy).map(([k, d]) => [k, { by: byUsers.get(d.by) || null, at: d.at }])) } });
   });
 
   // ---- tickets ------------------------------------------------------------

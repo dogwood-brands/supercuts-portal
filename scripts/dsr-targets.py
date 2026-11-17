@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Read each month's sales target per salon from the DSR workbooks ("BY TL" sheet) and write
-data/dsr-targets.csv (period, salon_number, target_dollars, run_rate_dollars). The last DSR of a month carries that
+data/dsr-targets.csv (period, salon_number, target_dollars, run_rate_dollars, haircut_target, haircuts_rr, haircuts_ly). The last DSR of a month carries that
 month's final targets. A DSR dated N reports through N-1, so its month is the month of N-1."""
 import csv, glob, os, re, sys
 from datetime import date, timedelta
@@ -25,6 +25,11 @@ def targets(path):
     c_tgt = next((i for i, h in enumerate(norm) if "net rev" in h and "tar" in h), None)
     if c_tgt is None or c_tgt < 1: return {}
     c_pct = c_tgt + 1
+    # Haircut columns: "# Monthly Haircuts TARGET", "# Haircuts RR", "# Haircuts LY" (v1.1, salon haircuts vs last year)
+    c_hct = next((i for i, h in enumerate(norm) if "haircut" in h and "target" in h), None)
+    c_hrr = next((i for i, h in enumerate(norm) if "haircut" in h and re.search(r"\brr\b", h)), None)
+    c_hly = next((i for i, h in enumerate(norm) if "haircut" in h and re.search(r"\bly\b", h)), None)
+    cell = lambda r, c: (round(num(r[c])) if c is not None and len(r) > c and num(r[c]) is not None else "")
     out = {}
     for r in rows[hdr_i + 1:]:
         if len(r) <= c_pct: continue
@@ -32,7 +37,7 @@ def targets(path):
         if sid is None or not str(sid).strip().isdigit() or not tgt or tgt < 1000: continue
         # the sheet's own ratio must agree, or the columns are not what we think they are
         if rr and pct and abs(rr / tgt - pct) > 0.01: continue
-        out[str(sid).strip()] = (round(tgt, 2), round(rr, 2) if rr else "")
+        out[str(sid).strip()] = (round(tgt, 2), round(rr, 2) if rr else "", cell(r, c_hct), cell(r, c_hrr), cell(r, c_hly))
     return out
 
 latest = {}
@@ -47,7 +52,7 @@ for period, p in sorted(latest.items()):
     except Exception as e:
         print(f"  {period}: could not read {os.path.basename(p)} ({e})", file=sys.stderr); continue
     print(f"  {period}: {len(t)} targets from {os.path.basename(p)}, total ${sum(v[0] for v in t.values()):,.0f}", file=sys.stderr)
-    rows += [(period, sid, v[0], v[1]) for sid, v in sorted(t.items())]
+    rows += [(period, sid, *v) for sid, v in sorted(t.items())]
 with open(OUT, "w", newline="") as f:
-    w = csv.writer(f); w.writerow(["period", "salon_number", "target_dollars", "run_rate_dollars"]); w.writerows(rows)
+    w = csv.writer(f); w.writerow(["period", "salon_number", "target_dollars", "run_rate_dollars", "haircut_target", "haircuts_rr", "haircuts_ly"]); w.writerows(rows)
 print(f"wrote {len(rows)} targets -> {OUT}", file=sys.stderr)

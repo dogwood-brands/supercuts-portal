@@ -11,8 +11,8 @@ const GROUPS = [
   { key: 'district', label: 'Districts' },
 ];
 const METRICS = [
+  { key: 'sales', label: 'Net revenue', blurb: 'Total net revenue for the period. This is what salon rank is based on.' },
   { key: 'pace', label: 'Pace to goal', blurb: 'Projected month against the sales goal.' },
-  { key: 'sales', label: 'Sales', blurb: 'Net sales for the period.' },
   { key: 'atv', label: 'Average ticket', blurb: 'Net sales divided by guests.' },
   { key: 'product_pct', label: 'Product %', blurb: 'Product sales as a share of net sales.' },
   { key: 'srph', label: 'Sales per hour', blurb: 'Net sales for every clocked hour.' },
@@ -95,7 +95,7 @@ export default {
   async render(ctx) {
     const st = {
       group: ['salon', 'stylist', 'district'].includes(ctx.query.group) ? ctx.query.group : (ctx.user.role === 'stylist' ? 'stylist' : 'salon'),
-      metric: METRICS.some((m) => m.key === ctx.query.metric) ? ctx.query.metric : 'pace',
+      metric: METRICS.some((m) => m.key === ctx.query.metric) ? ctx.query.metric : 'sales',
       period: 'mtd',
       seq: 0,
     };

@@ -28,6 +28,19 @@ export default function settings(ctx) {
       },
     });
 
+    // links and the HR inbox (v1.1)
+    const links = ui.form({
+      fields: [
+        { label: 'HR inbox', name: 'hr_inbox_email', type: 'email', value: s.hr_inbox_email || 'HR@scsalons.com', required: true, maxLength: 160, hint: 'Where Ask HR messages are delivered. The portal keeps no copy.' },
+        { label: 'iSolved sign-in link', name: 'isolved_url', value: s.isolved_url || '', maxLength: 500, placeholder: 'https://', hint: 'Opens from My job and My pay plan for benefits and eligibility.' },
+        { label: 'Supercuts Academy link', name: 'academy_url', value: s.academy_url || 'https://academy.dogwoodbrands.com', maxLength: 500 },
+      ],
+      submitLabel: 'Save links',
+      onSubmit: async (v) => {
+        await save({ hr_inbox_email: v.hr_inbox_email, isolved_url: v.isolved_url || null, academy_url: v.academy_url || null }, 'Links saved. They update the next time each person opens the portal.');
+      },
+    });
+
     // recognition values
     let values = (Array.isArray(s.values) ? s.values : []).map((x) => ({ key: x.key, label: x.label }));
     const list = h('div', { class: 'col gap-2' });
@@ -86,6 +99,7 @@ export default function settings(ctx) {
 
     return h('div', { class: 'stack-lg' },
       ui.card({ title: 'Company' }, company),
+      ui.card({ title: 'HR inbox and links' }, links),
       ui.card({ title: 'Recognition values', action: h('span', { class: 't-xs t-muted' }, 'Up to 12') },
         h('div', { class: 'stack' },
           h('p', { class: 't-sm t-muted' }, 'The values people pick from when they give a shout-out. Keep them short and in your own words.'),

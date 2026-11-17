@@ -30,6 +30,7 @@ const ROUTES = [
   ['/my-job', 'my-job'],
   ['/hr', 'hr'],
   ['/hr/:id', 'hr'],
+  ['/pay-plan', 'pay-plan'],
   ['/tube', 'tube'],
   ['/directory', 'directory'],
   ['/people/:id', 'people'],
@@ -57,23 +58,24 @@ function navModel() {
       ],
     },
     {
-      label: 'Sell',
+      // v1.1 labels from the 2026-11-12 review: "Sell Offers" and "Excellence".
+      label: 'Sell Offers',
       items: [
-        { path: '/promos', label: 'Promos', icon: 'tag' },
-        { path: '/products', label: 'Products', icon: 'bottle' },
+        { path: '/promos', label: 'Company-wide promos', icon: 'tag' },
       ],
     },
     {
-      label: 'Standards and training',
+      label: 'Excellence',
       items: [
         { path: '/standards', label: 'Brand standards', icon: 'book' },
+        { path: '/products', label: 'Products and shelf', icon: 'bottle' },
         { path: '/tube', label: 'SC Tube', icon: 'play' },
       ],
     },
     {
       label: 'Run the salon',
       items: [
-        { path: '/operations', label: 'Operations', icon: 'checklist' },
+        can('checklists') ? { path: '/operations', label: 'Checklists', icon: 'checklist' } : { path: '/operations', label: 'Calendar', icon: 'calendar' },
         { path: '/tickets', label: 'Support tickets', icon: 'ticket' },
       ],
     },
@@ -81,12 +83,13 @@ function navModel() {
       label: 'My job',
       items: [
         { path: '/my-job', label: 'My job', icon: 'briefcase' },
-        { path: '/hr', label: can('hr.inbox') ? 'HR inbox' : 'Ask HR', icon: 'lifebuoy' },
+        { path: '/pay-plan', label: 'My pay plan', icon: 'gift' },
+        { path: '/hr', label: can('hr.inbox') ? 'HR inbox' : 'Ask HR privately', icon: 'lifebuoy' },
         { path: '/directory', label: 'Directory', icon: 'users' },
       ],
     },
   ];
-  if (can('admin.users') || can('admin.content') || can('admin.settings') || can('moderate')) {
+  if (can('admin.users') || can('admin.content') || can('admin.settings') || can('moderate') || can('users.district') || can('goals.edit')) {
     groups.push({ label: 'Home office', items: [{ path: '/admin', label: 'Admin console', icon: 'settings' }] });
   }
   return groups.map((g) => ({ ...g, items: g.items.filter(Boolean) }));

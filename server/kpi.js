@@ -30,7 +30,6 @@ const median = (xs) => {
 const usd = (c) => `$${(c / 100).toFixed(2)}`;
 const usd0 = (c) => `$${Math.round(c / 100).toLocaleString('en-US')}`;
 
-const WEIGHTS = { pace: 40, srph: 25, product: 20, checklist: 15 };
 const CHECKLIST_WINDOW_DAYS = 14;
 
 function makeKpi(db) {
@@ -40,7 +39,7 @@ function makeKpi(db) {
     FROM kpi_daily WHERE date BETWEEN ? AND ? GROUP BY salon_id`);
   const daysStmt = db.prepare('SELECT COUNT(DISTINCT date) n FROM kpi_daily WHERE date BETWEEN ? AND ?');
   const goalsStmt = db.prepare('SELECT * FROM kpi_goals WHERE period = ?');
-  const salonsStmt = db.prepare("SELECT id, name, salon_number, district_id, market_id FROM salons WHERE status = 'active'");
+  const salonsStmt = db.prepare("SELECT id, name, salon_number, state, district_id, market_id FROM salons WHERE status = 'active'");
   const dailyTrend = db.prepare('SELECT date, SUM(net_sales_c) net_sales_c, SUM(guests) guests FROM kpi_daily WHERE date BETWEEN ? AND ? GROUP BY date ORDER BY date');
 
   let cache = null;
@@ -119,25 +118,26 @@ function makeKpi(db) {
     const medianSph = median([...bySalon.values()].map((x) => x.block.mtd.srph_c));
     const medianProduct = median([...bySalon.values()].map((x) => Math.round(x.block.mtd.product_pct * 10))) / 10;
 
-    // Rank score: pace 40, SRPH 25, product % 20, checklist completion 15. Each part is capped at 120% of goal.
-    const part = (value, goal) => (goal > 0 && value > 0 ? Math.min(value / goal, 1.2) : 0);
-    for (const x of bySalon.values()) {
-      const b = x.block;
-      x.score = round1(
-        WEIGHTS.pace * part(b.goal.pace_pct || 0, 100) +
-        WEIGHTS.srph * part(b.mtd.srph_c, b.goal.srph_goal_c || medianSph) +
-        WEIGHTS.product * part(b.mtd.product_pct, b.goal.product_pct_goal || medianProduct) +
-        WEIGHTS.checklist * part(x.checklist_pct, 100));
-    }
-    const rankWithin = (list, key) => {
-      list.sort((a, b) => b.score - a.score || a.salon.id - b.salon.id);
-      list.forEach((x, i) => { x[key] = i + 1; });
+    // Rank (v1.1, agreed with Chris Larkins 2026-11-12): total net revenue month to date, highest first.
+    // Ranking on progress to goal frustrated salons whose goals feel too high, so goals no longer move rank.
+    const rankWithin = (list, key, ofKey) => {
+      list.sort((a, b) => b.block.mtd.net_sales_c - a.block.mtd.net_sales_c || a.salon.id - b.salon.id);
+      list.forEach((x, i) => { x[key] = i + 1; x[ofKey] = list.length; });
     };
     const all = [...bySalon.values()];
-    rankWithin([...all], 'rank_company');
+    rankWithin([...all], 'rank_company', 'of_company');
     const groupBy = (f) => all.reduce((m, x) => { const k = f(x); (m.get(k) || m.set(k, []).get(k)).push(x); return m; }, new Map());
-    for (const g of groupBy((x) => x.salon.district_id).values()) rankWithin(g, 'rank_district');
-    for (const g of groupBy((x) => x.salon.market_id).values()) rankWithin(g, 'rank_market');
+    for (const g of groupBy((x) => x.salon.state).values()) rankWithin(g, 'rank_state', 'of_state');
+    for (const g of groupBy((x) => x.salon.district_id).values()) rankWithin(g, 'rank_district', 'of_district');
+    for (const g of groupBy((x) => x.salon.market_id).values()) rankWithin(g, 'rank_market', 'of_market');
+
+    // Salon haircuts against last year: the DSR's month-end haircut run-rate vs last year's month-end haircuts.
+    for (const x of all) {
+      const g = goals.get(x.salon.id);
+      const rr = g && g.haircuts_rr > 0 ? g.haircuts_rr : null;
+      const ly = g && g.haircuts_ly > 0 ? g.haircuts_ly : null;
+      x.haircuts = { mtd: x.block.mtd.haircuts, run_rate: rr, last_year: ly, vs_ly_pct: rr && ly ? round1(((rr - ly) / ly) * 100) : null };
+    }
 
     // "Check the boxes" on the salon page.
     for (const x of all) {

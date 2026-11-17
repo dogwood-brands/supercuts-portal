@@ -4,7 +4,8 @@
 const USER_SELECT = `
   SELECT u.id, u.username, u.email, u.first_name, u.last_name, u.role, u.title, u.avatar_url, u.salon_id, u.district_id,
          u.phone, u.hire_date, u.birthday_md, u.bio, u.status, u.must_change_password, u.last_login_at, u.created_at,
-         s.name AS salon_name, s.salon_number AS salon_number, m.name AS market_name
+         u.shift_manager, u.employee_id, u.pay_plan, u.directory_listed,
+         s.name AS salon_name, s.salon_number AS salon_number, s.state AS salon_state, m.name AS market_name
   FROM users u
   LEFT JOIN salons s ON s.id = u.salon_id
   LEFT JOIN markets m ON m.id = s.market_id`;
@@ -19,7 +20,7 @@ function publicUser(row) {
     role: row.role,
     title: row.title || null,
     avatar_url: row.avatar_url || null,
-    salon: row.salon_id ? { id: row.salon_id, name: row.salon_name, salon_number: row.salon_number, market: row.market_name || null } : null,
+    salon: row.salon_id ? { id: row.salon_id, name: row.salon_name, salon_number: row.salon_number, state: row.salon_state || null, market: row.market_name || null } : null,
   };
 }
 

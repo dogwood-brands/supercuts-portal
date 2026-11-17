@@ -18,6 +18,17 @@ The engineering work to take SC Portal from a working v1.0 demo to a system the 
 
 None of this blocks a leadership demo. All of it should be closed before stylists rely on the portal.
 
+## v1.1 (2026-11-17): what changed and what it adds to this plan
+
+v1.1 applies the 2026-11-12 leadership review (SPEC section 11). Build target: ready by **2026-11-30**; launch with the first December manager meeting. New items for production:
+
+- **Sending mailbox for Ask HR.** The portal keeps no HR message content; it emails each inquiry to HR@scsalons.com and deletes it. It needs a send-only mailbox (for example portal@scsalons.com) with Gmail API OAuth, set as `SCP_MAIL_CLIENT_ID`, `SCP_MAIL_CLIENT_SECRET`, `SCP_MAIL_REFRESH_TOKEN`, `SCP_MAIL_FROM`. Until then HR moves each message by hand from the HR inbox page.
+- **Per-stylist data (blocks the stylist pay-plan page).** Total sales, TSTH, Supercut Plus, haircuts, wet services and product sales per stylist. Options: the production / sales accrual report sent daily to the intake mailbox; an existing per-stylist report from the franchisor side; Zenoti API access. Interim: a manual upload by the home office. An estimated bonus waits for verified pay-plan thresholds from HR (phase 1.1 or 2).
+- **Video storage.** Promo explainer videos upload to `data/uploads` (up to 200 MB each). Move uploads to object storage with the database move.
+- **Photo retention.** Work albums are capped at 10 photos per person. A retention / archive rule for deleted and departed-staff photos is still to be set.
+- **Security.** Field accounts are usernames, not email. Offboarding includes turning off the portal sign-in; an iSolved hook to do it automatically is a later phase. Screenshot blocking is not possible on the web or a PWA.
+- **Academy.** Supercuts Academy still runs on the office machine; it needs proper hosting before its 2027 launch. Single sign-on with the portal is phase 2 or 3.
+
 ## (a) Managed PostgreSQL
 
 **Recommendation.** A managed PostgreSQL service: AWS RDS for PostgreSQL if the rest of the stack goes to AWS, or Neon for a lighter operational footprint. Requirements either way: encryption at rest, TLS in transit, automated daily backups, point-in-time recovery with at least 7 days of retention, and a private network path or IP allow-list from the application.

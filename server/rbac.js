@@ -9,10 +9,12 @@ const RANK = { stylist: 0, salon_manager: 1, district_leader: 2, hr: 3, executiv
 const PERMISSIONS = {
   stylist: [],
   salon_manager: ['post.announce', 'kpi.dollars'],
-  district_leader: ['post.announce', 'kpi.dollars', 'tickets.work'],
+  // users.district: add people, reset passwords and turn off sign-ins for stylists and managers in their own district.
+  district_leader: ['post.announce', 'kpi.dollars', 'tickets.work', 'users.district'],
   hr: ['post.announce', 'admin.users', 'admin.content', 'hr.inbox', 'moderate'],
-  executive: ['post.announce', 'kpi.dollars', 'kpi.company'],
-  admin: ['post.announce', 'kpi.dollars', 'kpi.company', 'admin.users', 'admin.content', 'admin.settings', 'hr.inbox', 'tickets.work', 'moderate'],
+  // goals.edit: executives maintain each salon's monthly sales goal (v1.1).
+  executive: ['post.announce', 'kpi.dollars', 'kpi.company', 'goals.edit'],
+  admin: ['post.announce', 'kpi.dollars', 'kpi.company', 'admin.users', 'admin.content', 'admin.settings', 'hr.inbox', 'tickets.work', 'moderate', 'goals.edit'],
 };
 
 const permissions = (user) => PERMISSIONS[user.role] || [];
@@ -20,6 +22,8 @@ const can = (user, perm) => permissions(user).includes(perm);
 const requirePerm = (...perms) => (req, res, next) =>
   (req.user && perms.some((p) => can(req.user, p)) ? next() : next(forbidden()));
 const isManagerPlus = (user) => RANK[user.role] >= 1;
+/** Checklists and store alerts: shift managers and above. Stylists do not see them (v1.1). */
+const canChecklists = (user) => isManagerPlus(user) || !!user.shift_manager;
 
 function makeRbac(db) {
   const districtSalons = db.prepare("SELECT id FROM salons WHERE district_id = ?");
@@ -70,4 +74,4 @@ function makeRbac(db) {
   return { userDistrictId, userMarketId, scopeSalonIds, salonInScope, requireSalonScope, scopeLabel, canSeeStylistStats };
 }
 
-module.exports = { ROLES, HOME_OFFICE, RANK, permissions, can, requirePerm, isManagerPlus, makeRbac };
+module.exports = { ROLES, HOME_OFFICE, RANK, permissions, can, requirePerm, isManagerPlus, canChecklists, makeRbac };

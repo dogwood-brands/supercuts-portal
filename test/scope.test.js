@@ -143,19 +143,34 @@ test('alerts: managers and district leaders in scope can update, stylists cannot
   assert.equal((await manager.patch(`/api/alerts/${alert.id}`, { state: 'maybe' })).status, 400);
 });
 
-test('checklists: own salon only; a manager signs off', async () => {
-  const list = await stylist.get('/api/checklists');
+test('checklists: shift managers and above, own salon only; a manager signs off; who ticked each item is kept', async () => {
+  // v1.1: a stylist does not see checklists or store alerts.
+  assert.equal((await stylist.get('/api/checklists')).status, 403);
+  assert.equal((await stylist.get('/api/me/todo')).body.items.some((i) => i.kind === 'checklist'), false);
+  assert.ok(!stylist.me.permissions.includes('checklists'));
+  assert.equal((await stylist.get(`/api/salons/${MDR}`)).body.alerts.store.length, 0);
+  assert.ok((await manager.get(`/api/salons/${MDR}`)).body.alerts.store.length > 0);
+  // A shift manager (a stylist with the flag) does.
+  const sm = p.stylistAt(8495, 2);
+  p.db.prepare('UPDATE users SET shift_manager = 1 WHERE id = ?').run(sm.id);
+  const shift = await p.as(sm.username);
+  assert.ok(shift.me.permissions.includes('checklists'));
+  const list = await shift.get('/api/checklists');
   assert.equal(list.status, 200);
   const open = list.body.items.find((i) => i.template.key === 'open');
   const all = open.template.items.map((i) => i.id);
-  assert.equal((await stylist.get(`/api/checklists?salon_id=${PAS}`)).status, 403);
-  assert.equal((await stylist.put(`/api/checklists/${open.template.id}/run`, { salon_id: PAS, done: all })).status, 403);
-  assert.equal((await stylist.put(`/api/checklists/${open.template.id}/run`, { salon_id: MDR, done: all.slice(0, 3) })).status, 200);
-  assert.equal((await stylist.put(`/api/checklists/${open.template.id}/run`, { salon_id: MDR, done: all, complete: true })).status, 403);
+  assert.equal((await shift.get(`/api/checklists?salon_id=${PAS}`)).status, 403);
+  assert.equal((await shift.put(`/api/checklists/${open.template.id}/run`, { salon_id: PAS, done: all })).status, 403);
+  const part = await shift.put(`/api/checklists/${open.template.id}/run`, { salon_id: MDR, done: all.slice(0, 3) });
+  assert.equal(part.status, 200);
+  assert.equal(part.body.run.done_by[all[0]].by.id, sm.id);
+  assert.equal((await shift.put(`/api/checklists/${open.template.id}/run`, { salon_id: MDR, done: all, complete: true })).status, 403);
   assert.equal((await manager.put(`/api/checklists/${open.template.id}/run`, { salon_id: MDR, done: all.slice(0, 3), complete: true })).status, 400);
   const done = await manager.put(`/api/checklists/${open.template.id}/run`, { salon_id: MDR, done: all, complete: true });
   assert.equal(done.status, 200);
   assert.equal(done.body.run.completed_by.id, manager.me.id);
+  assert.equal(done.body.run.done_by[all[0]].by.id, sm.id, 'the first person to tick an item keeps the credit');
+  assert.equal(done.body.run.done_by[all[all.length - 1]].by.id, manager.me.id);
   assert.equal((await hr.get(`/api/checklists?salon_id=${MDR}`)).status, 403);
 });
 
@@ -185,19 +200,28 @@ test('tickets: visible to the author, the salon\'s manager, the district leader 
   assert.ok(mgr.body.items.length > 1 && mgr.body.items.every((t) => t.salon.id === MDR));
 });
 
-test('directory: stylists do not get peers\' contact details', async () => {
+test('directory: leadership, district leaders and salons by state; no list of stylists', async () => {
   p.db.prepare("UPDATE users SET phone = '555-0100', email = lower(username) || '@example.test' WHERE role IN ('stylist','salon_manager','district_leader')").run();
-  const s = await stylist.get(`/api/directory?salon_id=${MDR}`);
-  assert.equal(s.status, 200);
-  const peers = s.body.people.filter((x) => x.role === 'stylist' || x.role === 'salon_manager');
-  assert.ok(peers.length >= 5);
-  for (const x of peers) { assert.equal('phone' in x, false); assert.equal('email' in x, false); }
-  const m = await manager.get(`/api/directory?salon_id=${MDR}`);
-  assert.ok(m.body.people.every((x) => x.phone === '555-0100'));
-  const leaders = await stylist.get('/api/directory?role=district_leader');
-  assert.ok(leaders.body.people.length >= 7 && leaders.body.people.every((x) => 'phone' in x), 'field leadership contacts are open');
-  assert.equal(JSON.stringify(s.body).includes('password'), false);
-  const person = await stylist.get(`/api/people/${peers[0].id}`);
+  p.db.prepare("UPDATE salons SET email = 'mdr@example.test' WHERE id = ?").run(MDR);
+  const s0 = await stylist.get('/api/directory');
+  assert.equal(s0.status, 200);
+  assert.deepEqual(Object.keys(s0.body).sort(), ['district_leaders', 'leadership', 'states']);
+  assert.equal('people' in s0.body, false, 'no directory of every stylist');
+  assert.ok(s0.body.district_leaders.length >= 7 && s0.body.district_leaders.every((x) => 'phone' in x && x.district));
+  assert.deepEqual(s0.body.states.map((x) => x.name), ['Arizona', 'California', 'Nevada']);
+  const salons = s0.body.states.flatMap((x) => x.salons);
+  assert.equal(salons.length, 51);
+  const mdr = salons.find((x) => x.id === MDR);
+  assert.equal(mdr.email, 'mdr@example.test');
+  assert.ok(mdr.manager && mdr.address && mdr.phone);
+  for (const st of s0.body.states) assert.deepEqual(st.salons.map((x) => x.name), [...st.salons.map((x) => x.name)].sort((a, b) => a.localeCompare(b)));
+  assert.equal(JSON.stringify(s0.body).includes('password'), false);
+  assert.equal(hasDollars(s0.body), false);
+  const q = await stylist.get('/api/directory?q=marina');
+  assert.ok(q.body.states.flatMap((x) => x.salons).every((x) => /marina/i.test(x.name + x.city + (x.shopping_center || ''))));
+  // Profiles still hide a peer's contact details from stylists.
+  const peer = p.stylistAt(8495, 1);
+  const person = await stylist.get(`/api/people/${peer.id}`);
   assert.equal(person.status, 200);
   assert.equal('phone' in person.body.person, false);
 });
@@ -215,11 +239,13 @@ test('search returns at most five of each and never contact details', async () =
 
 test('admin routes are closed to the field and gated per permission', async () => {
   for (const c of [stylist, manager, dl]) {
-    for (const url of ['/api/admin/users', '/api/admin/overview', '/api/admin/settings', '/api/admin/audit', '/api/admin/promos', '/api/admin/reports', '/api/admin/goals', '/api/admin/salons']) {
+    for (const url of [...(c === dl ? [] : ['/api/admin/users']), '/api/admin/overview', '/api/admin/settings', '/api/admin/audit', '/api/admin/promos', '/api/admin/reports', '/api/admin/goals', '/api/admin/salons']) {
       assert.equal((await c.get(url)).status, 403, url);
     }
   }
-  assert.equal((await exec.get('/api/admin/users')).status, 403, 'executives are read-only and have no admin console');
+  assert.equal((await exec.get('/api/admin/users')).status, 403, 'executives have no people admin');
+  assert.equal((await exec.get('/api/admin/goals')).status, 200, 'executives maintain sales goals (v1.1)');
+  assert.equal((await exec.get('/api/admin/settings')).status, 403);
   assert.equal((await hr.get('/api/admin/users')).status, 200);
   assert.equal((await hr.get('/api/admin/settings')).status, 403);
   assert.equal((await hr.get('/api/admin/audit')).status, 403);

@@ -3,6 +3,7 @@ const express = require('express');
 const crypto = require('node:crypto');
 const auth = require('../auth');
 const { ROLES, RANK, can, requirePerm } = require('../rbac');
+const { mapRosterRecord, ROSTER_TEMPLATE } = require('../import/roster');
 const { v, bad, forbidden, notFound, conflict, idParam, nowIso, todayLocal, addDays, json, encodeCursor, decodeCursor, limitParam, round1, HttpError } = require('../util');
 const { USER_SELECT, publicUser } = require('../shape');
 const { parseCsvObjects } = require('../import/csv');
@@ -30,15 +31,29 @@ module.exports = (ctx) => {
     ...publicUser(row), username: row.username, email: row.email || null, phone: row.phone || null, status: row.status,
     last_login_at: row.last_login_at || null, hire_date: row.hire_date || null, birthday_md: row.birthday_md || null,
     must_change_password: !!row.must_change_password, district_id: row.district_id || null, created_at: row.created_at,
+    shift_manager: !!row.shift_manager, employee_id: row.employee_id || null, pay_plan: row.pay_plan || null, directory_listed: !!row.directory_listed,
   });
+
+  // District leaders (users.district) manage stylists and managers in their own district only (v1.1).
+  const FIELD_ROLES = ['stylist', 'salon_manager'];
+  const isDistrictAdmin = (u) => !can(u, 'admin.users') && can(u, 'users.district');
+  function assertDistrictReach(actor, { role, salon_id }) {
+    if (!isDistrictAdmin(actor)) return;
+    if (role && !FIELD_ROLES.includes(role)) throw forbidden('District leaders manage stylists and salon managers.');
+    if (!salon_id || !rbac.salonInScope(actor, salon_id)) throw forbidden('That salon is outside your district.');
+  }
+  const usersPerm = requirePerm('admin.users', 'users.district');
 
   /** HR manages field and HR accounts; only admins manage admin and executive accounts. */
   function assertCanManage(actor, role) {
     if (actor.role !== 'admin' && (role === 'admin' || role === 'executive')) throw forbidden('Only an administrator can manage leadership and administrator accounts.');
   }
-  function uniqueUsername(first, last) {
-    const base = `${first}.${last}`.toLowerCase().normalize('NFKD').replace(/[^a-z0-9.]/g, '').replace(/\.+/g, '.').replace(/^\.|\.$/g, '').slice(0, 34) || 'user';
-    const taken = db.prepare('SELECT 1 FROM users WHERE username = ?');
+  /** First initial + last name (jsmith), then jsmith2, jsmith3 when taken (agreed 2026-11-12). */
+  function uniqueUsername(first, last, reserved = new Set()) {
+    const clean = (x) => String(x || '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]/g, '');
+    const base = `${clean(first).slice(0, 1)}${clean(last)}`.slice(0, 34) || 'user';
+    const stmt = db.prepare('SELECT 1 FROM users WHERE username = ?');
+    const taken = { get: (u) => reserved.has(u) || stmt.get(u) };
     if (base.length >= 3 && !taken.get(base)) return base;
     for (let i = 2; i < 1000; i++) if (!taken.get(`${base}${i}`)) return `${base}${i}`;
     return `${base}.${crypto.randomBytes(3).toString('hex')}`;
@@ -76,6 +91,10 @@ module.exports = (ctx) => {
       if (out.district_id && !db.prepare('SELECT 1 FROM districts WHERE id = ?').get(out.district_id)) throw bad('We could not find that district.');
     }
     if (!creating && 'status' in b) out.status = v.oneOf(b.status, 'Status', ['active', 'inactive']);
+    if ('shift_manager' in b) out.shift_manager = v.bool(b.shift_manager) ? 1 : 0;
+    if ('employee_id' in b) out.employee_id = v.str(b.employee_id === null || b.employee_id === undefined ? b.employee_id : String(b.employee_id), 'Employee ID', { max: 40, required: false }) || null;
+    if ('pay_plan' in b) out.pay_plan = v.oneOf(b.pay_plan || null, 'Pay plan', ['CA', 'NV', 'AZ'], { required: false }) || null;
+    if ('directory_listed' in b) out.directory_listed = v.bool(b.directory_listed) ? 1 : 0;
     return out;
   }
   /** Keeps salons.manager_user_id and districts.leader_user_id in step with the user's role. */
@@ -92,7 +111,7 @@ module.exports = (ctx) => {
     if ((f.role === 'stylist' || f.role === 'salon_manager') && !f.salon_id) throw bad('Stylists and salon managers need a salon.');
   }
 
-  r.get('/admin/users', requirePerm('admin.users'), (req, res) => {
+  r.get('/admin/users', usersPerm, (req, res) => {
     const q = v.str(req.query.q, 'Search', { max: 60, required: false });
     const role = v.oneOf(req.query.role, 'role', ROLES, { required: false });
     const salonId = v.int(req.query.salon_id, 'salon_id', { min: 1, required: false });
@@ -103,14 +122,22 @@ module.exports = (ctx) => {
     if (role) { where.push('u.role = ?'); params.push(role); }
     if (salonId) { where.push('u.salon_id = ?'); params.push(salonId); }
     if (status) { where.push('u.status = ?'); params.push(status); }
+    if (isDistrictAdmin(req.user)) {
+      const ids = rbac.scopeSalonIds(req.user);
+      where.push(`u.role IN ('stylist','salon_manager') AND u.salon_id IN (${ids.length ? ids.map(() => '?').join(',') : 'NULL'})`);
+      params.push(...ids);
+    }
     const total = db.prepare(`SELECT COUNT(*) n FROM users u WHERE ${where.join(' AND ')}`).get(...params).n;
     const rows = db.prepare(`${USER_SELECT} WHERE ${where.join(' AND ')} ORDER BY u.first_name, u.last_name LIMIT 1000`).all(...params);
     res.json({ items: rows.map(adminUser), total });
   });
 
-  r.post('/admin/users', requirePerm('admin.users'), (req, res) => {
+  r.post('/admin/users', usersPerm, (req, res) => {
     const f = userFields(req.body || {}, { creating: true });
     assertCanManage(req.user, f.role);
+    assertDistrictReach(req.user, f);
+    if (isDistrictAdmin(req.user)) delete f.directory_listed;
+    if (f.employee_id && db.prepare('SELECT 1 FROM users WHERE employee_id = ?').get(f.employee_id)) throw conflict('Someone already has that employee ID.');
     requireSalonForRole(f);
     const username = f.username || uniqueUsername(f.first_name, f.last_name);
     if (db.prepare('SELECT 1 FROM users WHERE username = ?').get(username)) throw conflict('That username is taken. Try another.');
@@ -118,9 +145,11 @@ module.exports = (ctx) => {
     const temp = auth.generatePassword();
     const id = db.transaction(() => {
       const info = db.prepare(`INSERT INTO users (email, username, password_hash, must_change_password, role, first_name, last_name, title, salon_id, district_id,
-          phone, avatar_url, hire_date, birthday_md, bio, status, created_at) VALUES (?,?,?,1,?,?,?,?,?,?,?,?,?,?,?, 'active', ?)`)
+          phone, avatar_url, hire_date, birthday_md, bio, status, created_at, shift_manager, employee_id, pay_plan, directory_listed)
+          VALUES (?,?,?,1,?,?,?,?,?,?,?,?,?,?,?, 'active', ?, ?,?,?,?)`)
         .run(f.email ?? null, username, auth.hashPassword(temp), f.role, f.first_name, f.last_name, f.title ?? null, f.salon_id ?? null, f.district_id ?? null,
-          f.phone ?? null, f.avatar_url ?? null, f.hire_date ?? null, f.birthday_md ?? null, f.bio ?? null, nowIso());
+          f.phone ?? null, f.avatar_url ?? null, f.hire_date ?? null, f.birthday_md ?? null, f.bio ?? null, nowIso(),
+          f.shift_manager ?? 0, f.employee_id ?? null, f.pay_plan ?? null, f.directory_listed ?? 0);
       const uid = Number(info.lastInsertRowid);
       syncOrgLinks(uid);
       return uid;
@@ -129,12 +158,15 @@ module.exports = (ctx) => {
     res.json({ user: adminUser(shapes.userRow(id)), temp_password: temp });
   });
 
-  r.patch('/admin/users/:id', requirePerm('admin.users'), (req, res) => {
+  r.patch('/admin/users/:id', usersPerm, (req, res) => {
     const target = db.prepare('SELECT * FROM users WHERE id = ?').get(idParam(req));
     if (!target) throw notFound('We could not find that person.');
     assertCanManage(req.user, target.role);
+    assertDistrictReach(req.user, target);
     const f = userFields(req.body || {}, { creating: false });
     if (f.role) assertCanManage(req.user, f.role);
+    if (isDistrictAdmin(req.user)) { delete f.directory_listed; delete f.district_id; assertDistrictReach(req.user, { role: f.role || target.role, salon_id: 'salon_id' in f ? f.salon_id : target.salon_id }); }
+    if (f.employee_id && f.employee_id !== target.employee_id && db.prepare('SELECT 1 FROM users WHERE employee_id = ?').get(f.employee_id)) throw conflict('Someone already has that employee ID.');
     if (target.id === req.user.id && ((f.role && f.role !== target.role) || f.status === 'inactive')) throw bad('You cannot change your own role or deactivate your own account.');
     const next = { ...target, ...f };
     requireSalonForRole(next);
@@ -155,10 +187,11 @@ module.exports = (ctx) => {
     res.json({ user: adminUser(shapes.userRow(target.id)) });
   });
 
-  r.post('/admin/users/:id/reset-password', requirePerm('admin.users'), (req, res) => {
-    const target = db.prepare('SELECT id, role FROM users WHERE id = ?').get(idParam(req));
+  r.post('/admin/users/:id/reset-password', usersPerm, (req, res) => {
+    const target = db.prepare('SELECT id, role, salon_id FROM users WHERE id = ?').get(idParam(req));
     if (!target) throw notFound('We could not find that person.');
     assertCanManage(req.user, target.role);
+    assertDistrictReach(req.user, target);
     const temp = auth.generatePassword();
     db.transaction(() => {
       db.prepare('UPDATE users SET password_hash = ?, must_change_password = 1 WHERE id = ?').run(auth.hashPassword(temp), target.id);
@@ -168,46 +201,95 @@ module.exports = (ctx) => {
     res.json({ temp_password: temp });
   });
 
-  // CSV columns: first_name, last_name, role, salon_number (required for stylists and managers),
-  // optional: username, email, title, phone, hire_date, birthday_md. Up to 300 rows per call.
-  r.post('/admin/users/import', requirePerm('admin.users'), bigJson, (req, res, next) => { importUsers(req, res).catch(next); });
+  // Employee upload (v1.1). CSV from iSolved or the template (GET /admin/users/template).
+  // Rows are matched on employee_id when present: a re-upload updates salon, title, shift-manager flag and
+  // pay plan instead of creating a duplicate. New people get a username (first initial + last name) and a
+  // temporary password they must change at first sign-in. Up to 1,000 rows per upload.
+  r.get('/admin/users/template', usersPerm, (req, res) => {
+    res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="sc-portal-employee-upload-template.csv"' });
+    res.send(ROSTER_TEMPLATE);
+  });
+  r.post('/admin/users/import', usersPerm, bigJson, (req, res, next) => { importUsers(req, res).catch(next); });
   async function importUsers(req, res) {
-    const csv = v.str(req.body?.csv, 'CSV', { max: 2_000_000, trim: false });
+    const csv = v.str(req.body?.csv, 'CSV', { max: 4_000_000, trim: false });
+    const dryRun = v.bool(req.body?.dry_run);
     const { header, records } = parseCsvObjects(csv);
-    for (const c of ['first_name', 'last_name', 'role']) if (!header.includes(c)) throw bad(`The file needs a ${c} column.`);
-    if (records.length > 300) throw bad('Import up to 300 people at a time.');
+    if (!records.length) throw bad('The file has no rows under the header.');
+    if (records.length > 1000) throw bad('Upload up to 1,000 people at a time.');
     const salonByNumber = new Map(db.prepare('SELECT id, salon_number FROM salons').all().map((s) => [String(s.salon_number), s.id]));
+    const salonState = new Map(db.prepare('SELECT id, state FROM salons').all().map((s) => [s.id, s.state]));
     const created = [];
+    const updated = [];
     const rejected = [];
-    for (const rec of records) {
+    const seenIds = new Set();
+    let headerChecked = false;
+    for (const raw of records) {
       try {
+        const rec = mapRosterRecord(raw, header);
+        if (!headerChecked) {
+          headerChecked = true;
+          if (!rec._has.first_name || !rec._has.last_name) throw Object.assign(bad('The file needs first name and last name columns.'), { fatal: true });
+        }
         const body = { first_name: rec.first_name, last_name: rec.last_name, role: rec.role || 'stylist' };
-        for (const k of ['username', 'email', 'title', 'phone', 'hire_date', 'birthday_md']) if (rec[k]) body[k] = rec[k];
+        for (const k of ['username', 'email', 'title', 'phone', 'hire_date', 'employee_id', 'pay_plan']) if (rec[k]) body[k] = rec[k];
+        if (rec.shift_manager !== undefined) body.shift_manager = rec.shift_manager;
         if (rec.salon_number) {
           const sid = salonByNumber.get(rec.salon_number);
           if (!sid) throw bad(`Salon ${rec.salon_number} is not in the portal.`);
           body.salon_id = sid;
+          // Pay plan follows the salon's state unless the file says otherwise (CA, NV and AZ plans differ).
+          if (!body.pay_plan && ['CA', 'NV', 'AZ'].includes(salonState.get(sid))) body.pay_plan = salonState.get(sid);
+        }
+        if (body.employee_id) {
+          if (seenIds.has(body.employee_id)) throw bad(`Employee ID ${body.employee_id} appears twice in this file.`);
+          seenIds.add(body.employee_id);
+        }
+        const existing = body.employee_id ? db.prepare('SELECT * FROM users WHERE employee_id = ?').get(body.employee_id) : null;
+        if (existing) {
+          // Update the fields a roster owns; never the password, username or status.
+          const f = userFields({ first_name: body.first_name, last_name: body.last_name, role: body.role, title: body.title ?? existing.title,
+            ...(body.salon_id ? { salon_id: body.salon_id } : {}), ...(body.phone ? { phone: body.phone } : {}), ...(body.email ? { email: body.email } : {}),
+            ...(body.hire_date ? { hire_date: body.hire_date } : {}), ...(body.pay_plan ? { pay_plan: body.pay_plan } : {}),
+            ...(body.shift_manager !== undefined ? { shift_manager: body.shift_manager } : {}) }, { creating: false });
+          assertCanManage(req.user, existing.role);
+          assertCanManage(req.user, f.role);
+          assertDistrictReach(req.user, existing);
+          assertDistrictReach(req.user, { role: f.role, salon_id: f.salon_id ?? existing.salon_id });
+          requireSalonForRole({ ...existing, ...f });
+          if (f.email && f.email !== existing.email && db.prepare('SELECT 1 FROM users WHERE email = ? AND id != ?').get(f.email, existing.id)) throw bad(`Email ${f.email} is already in use.`);
+          const cols = Object.keys(f).filter((c) => f[c] !== existing[c]);
+          if (cols.length && !dryRun) {
+            db.prepare(`UPDATE users SET ${cols.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`).run(...cols.map((c) => f[c]), existing.id);
+            syncOrgLinks(existing.id);
+          }
+          updated.push({ id: existing.id, name: `${f.first_name} ${f.last_name}`, username: existing.username, changed: cols });
+          continue;
         }
         const f = userFields(body, { creating: true });
         assertCanManage(req.user, f.role);
+        assertDistrictReach(req.user, f);
         requireSalonForRole(f);
-        const username = f.username || uniqueUsername(f.first_name, f.last_name);
-        if (db.prepare('SELECT 1 FROM users WHERE username = ?').get(username)) throw bad(`Username ${username} is taken.`);
+        const username = f.username || uniqueUsername(f.first_name, f.last_name, new Set(created.map((c) => c.username)));
+        if (db.prepare('SELECT 1 FROM users WHERE username = ?').get(username) || created.some((c) => c.username === username)) throw bad(`Username ${username} is taken.`);
         if (f.email && db.prepare('SELECT 1 FROM users WHERE email = ?').get(f.email)) throw bad(`Email ${f.email} is already in use.`);
+        if (dryRun) { created.push({ name: `${f.first_name} ${f.last_name}`, username, salon_number: rec.salon_number || null }); continue; }
         const temp = auth.generatePassword();
-        const hash = await auth.hashPasswordAsync(temp); // off the main thread, so a large import does not stall other requests
-        const info = db.prepare(`INSERT INTO users (email, username, password_hash, must_change_password, role, first_name, last_name, title, salon_id, phone, hire_date, birthday_md, status, created_at)
-          VALUES (?,?,?,1,?,?,?,?,?,?,?,?, 'active', ?)`).run(f.email ?? null, username, hash, f.role, f.first_name, f.last_name,
-          f.title ?? (f.role === 'stylist' ? 'Stylist' : f.role === 'salon_manager' ? 'Salon Manager' : null), f.salon_id ?? null, f.phone ?? null, f.hire_date ?? null, f.birthday_md ?? null, nowIso());
+        const hash = await auth.hashPasswordAsync(temp); // off the main thread, so a large upload does not stall other requests
+        const info = db.prepare(`INSERT INTO users (email, username, password_hash, must_change_password, role, first_name, last_name, title, salon_id, phone, hire_date,
+            status, created_at, shift_manager, employee_id, pay_plan)
+          VALUES (?,?,?,1,?,?,?,?,?,?,?, 'active', ?, ?,?,?)`).run(f.email ?? null, username, hash, f.role, f.first_name, f.last_name,
+          f.title ?? (f.role === 'stylist' ? 'Stylist' : f.role === 'salon_manager' ? 'Salon Manager' : null), f.salon_id ?? null, f.phone ?? null, f.hire_date ?? null, nowIso(),
+          f.shift_manager ?? 0, f.employee_id ?? null, f.pay_plan ?? null);
         syncOrgLinks(Number(info.lastInsertRowid));
-        created.push({ id: Number(info.lastInsertRowid), name: `${f.first_name} ${f.last_name}`, username, temp_password: temp });
+        created.push({ id: Number(info.lastInsertRowid), name: `${f.first_name} ${f.last_name}`, username, temp_password: temp, salon_number: rec.salon_number || null });
       } catch (e) {
+        if (e.fatal) throw e;
         if (!(e instanceof HttpError)) throw e;
-        rejected.push({ line: rec._line, reason: e.message });
+        rejected.push({ line: raw._line, reason: e.message });
       }
     }
-    audit(req, 'user.import', 'user', null, { created: created.length, rejected: rejected.length });
-    res.json({ created, rejected });
+    if (!dryRun) audit(req, 'user.import', 'user', null, { created: created.length, updated: updated.length, rejected: rejected.length });
+    res.json({ dry_run: dryRun, created, updated, rejected });
   }
 
   r.post('/admin/invites', requirePerm('admin.users'), (req, res) => {
@@ -300,6 +382,7 @@ module.exports = (ctx) => {
       state: (x) => v.str(x, 'State', { max: 2, required: false }),
       zip: (x) => v.str(x, 'ZIP', { max: 10, required: false }),
       phone: (x) => v.str(x, 'Phone', { max: 30, required: false }),
+      email: (x) => { const e = v.str(x, 'Email', { max: 160, required: false }); if (e && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) throw bad('That email address does not look right.'); return e ? e.toLowerCase() : null; },
       shopping_center: (x) => v.str(x, 'Shopping center', { max: 120, required: false }),
       market_id: opt(refExists('markets', 'Market')),
       district_id: opt(refExists('districts', 'District')),
@@ -331,6 +414,8 @@ module.exports = (ctx) => {
       summary: (x) => v.str(x, 'Summary', { max: 400, required: false }),
       body: (x) => v.str(x, 'Details', { max: 20000, required: false }),
       image_url: (x) => v.url(x, 'Image'),
+      video_url: (x) => v.url(x, 'Video', { allowExternal: true }),
+      video_poster_url: (x) => v.url(x, 'Video thumbnail'),
       starts_on: (x) => v.date(x, 'Start date', { required: false }),
       ends_on: (x) => v.date(x, 'End date', { required: false }),
       tag: (x) => v.str(x, 'Tag', { max: 40, required: false }),
@@ -411,15 +496,16 @@ module.exports = (ctx) => {
   // ======================================================================
   // KPI goals and import
   // ======================================================================
-  r.get('/admin/goals', requirePerm('admin.settings'), (req, res) => {
+  r.get('/admin/goals', requirePerm('admin.settings', 'goals.edit'), (req, res) => {
     const period = v.str(req.query.period, 'period', { max: 7, required: false }) || todayLocal().slice(0, 7);
     if (!PERIOD_RE.test(period)) throw bad('period must look like 2026-11.');
-    const rows = db.prepare(`SELECT s.id AS salon_id, s.name AS salon_name, s.salon_number, g.sales_goal_c, g.product_pct_goal, g.srph_goal_c
+    const rows = db.prepare(`SELECT s.id AS salon_id, s.name AS salon_name, s.salon_number, g.sales_goal_c, g.product_pct_goal, g.srph_goal_c,
+        g.goal_source, g.haircut_goal, g.haircuts_rr, g.haircuts_ly
       FROM salons s LEFT JOIN kpi_goals g ON g.salon_id = s.id AND g.period = ? WHERE s.status = 'active' ORDER BY s.name`).all(period);
     res.json({ period, items: rows });
   });
 
-  r.put('/admin/goals', requirePerm('admin.settings'), (req, res) => {
+  r.put('/admin/goals', requirePerm('admin.settings', 'goals.edit'), (req, res) => {
     const b = req.body || {};
     const period = v.str(b.period ?? req.query.period, 'Period', { max: 7 });
     if (!PERIOD_RE.test(period)) throw bad('Period must look like 2026-11.');
@@ -430,12 +516,25 @@ module.exports = (ctx) => {
       product_pct_goal: v.num(it?.product_pct_goal, 'Product % goal', { min: 0, max: 100, required: false }),
       srph_goal_c: v.int(it?.srph_goal_c, 'SRPH goal', { min: 0, max: 100_000, required: false }),
     }));
-    const stmt = db.prepare(`INSERT INTO kpi_goals (salon_id, period, sales_goal_c, product_pct_goal, srph_goal_c) VALUES (?,?,?,?,?)
-      ON CONFLICT(salon_id, period) DO UPDATE SET sales_goal_c = excluded.sales_goal_c, product_pct_goal = excluded.product_pct_goal, srph_goal_c = excluded.srph_goal_c`);
-    db.transaction(() => { for (const g of rows) stmt.run(g.salon_id, period, g.sales_goal_c, g.product_pct_goal, g.srph_goal_c); })();
+    // Only rows whose figures changed become 'manual'; the DSR load never overwrites a manual goal.
+    const cur = new Map(db.prepare('SELECT * FROM kpi_goals WHERE period = ?').all(period).map((g) => [g.salon_id, g]));
+    const stmt = db.prepare(`INSERT INTO kpi_goals (salon_id, period, sales_goal_c, product_pct_goal, srph_goal_c, goal_source) VALUES (?,?,?,?,?, 'manual')
+      ON CONFLICT(salon_id, period) DO UPDATE SET sales_goal_c = excluded.sales_goal_c, product_pct_goal = excluded.product_pct_goal, srph_goal_c = excluded.srph_goal_c, goal_source = 'manual'`);
+    const changed = rows.filter((g) => { const c = cur.get(g.salon_id); return !c || c.sales_goal_c !== g.sales_goal_c || (c.product_pct_goal ?? null) !== g.product_pct_goal || (c.srph_goal_c ?? null) !== g.srph_goal_c; });
+    db.transaction(() => { for (const g of changed) stmt.run(g.salon_id, period, g.sales_goal_c, g.product_pct_goal, g.srph_goal_c); })();
     kpi.invalidate();
-    audit(req, 'goals.updated', 'kpi_goals', null, { period, salons: rows.length });
-    res.json({ ok: true, period, saved: rows.length });
+    audit(req, 'goals.updated', 'kpi_goals', null, { period, salons: changed.length });
+    res.json({ ok: true, period, saved: changed.length });
+  });
+
+  r.post('/admin/goals/revert', requirePerm('admin.settings', 'goals.edit'), (req, res) => {
+    const b = req.body || {};
+    const period = v.str(b.period, 'Period', { max: 7 });
+    if (!PERIOD_RE.test(period)) throw bad('Period must look like 2026-11.');
+    const salonId = refExists('salons', 'Salon')(b.salon_id);
+    db.prepare("UPDATE kpi_goals SET goal_source = 'dsr' WHERE salon_id = ? AND period = ?").run(salonId, period);
+    audit(req, 'goals.reverted', 'kpi_goals', salonId, { period });
+    res.json({ ok: true, note: 'The DSR goal returns at the next sales refresh.' });
   });
 
   r.post('/admin/import/dsr', requirePerm('admin.settings'), bigJson, express.text({ type: 'text/csv', limit: '8mb' }), (req, res) => {
@@ -510,7 +609,7 @@ module.exports = (ctx) => {
       posts_7d: one('SELECT COUNT(*) n FROM posts WHERE deleted_at IS NULL AND created_at >= ?', weekAgo),
       shoutouts_7d: one("SELECT COUNT(*) n FROM posts WHERE deleted_at IS NULL AND kind = 'shoutout' AND created_at >= ?", weekAgo),
       open_tickets: one("SELECT COUNT(*) n FROM tickets WHERE status IN ('open','in_progress','waiting')"),
-      open_hr: can(req.user, 'hr.inbox') ? one("SELECT COUNT(*) n FROM hr_inquiries WHERE status IN ('open','in_progress','waiting')") : null,
+      open_hr: can(req.user, 'hr.inbox') ? one('SELECT COUNT(*) n FROM hr_outbox') : null,
       open_reports: one("SELECT COUNT(*) n FROM reports WHERE status = 'open'"),
       ack_completion_pct: ackNeeded ? round1((ackDone / ackNeeded) * 100) : 100,
       checklist_completion_pct: checks.length ? round1(checks.reduce((a, b) => a + b, 0) / checks.length) : 0,
@@ -554,6 +653,9 @@ module.exports = (ctx) => {
       return out;
     },
     academy_url: (x) => v.url(x, 'Training link', { allowExternal: true }),
+    isolved_url: (x) => v.url(x, 'iSolved link', { allowExternal: true }),
+    hr_inbox_email: (x) => { const e = v.str(x, 'HR inbox', { max: 160 }); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) throw bad('The HR inbox must be an email address.'); return e; },
+    hr_log_retention_days: (x) => v.int(x, 'HR log retention', { min: 30, max: 3650 }),
   };
   const allSettings = () => Object.fromEntries(db.prepare('SELECT key, value_json FROM settings').all().map((s) => [s.key, json(s.value_json, null)]));
 

@@ -1,89 +1,75 @@
 'use strict';
 const express = require('express');
-const { can } = require('../rbac');
+const { can, canChecklists } = require('../rbac');
 const { v, forbidden, notFound, idParam, nowIso, todayLocal } = require('../util');
 
-const CATEGORIES = ['pay', 'schedule', 'benefits', 'leave', 'concern', 'other'];
-const STATUSES = ['open', 'in_progress', 'waiting', 'resolved', 'closed'];
 const SECTIONS = ['brand', 'products', 'policies', 'ops', 'hr'];
 
 module.exports = (ctx) => {
   const { db, shapes, audit, notify } = ctx;
   const r = express.Router();
 
-  // ---- HR inquiries: visible only to the author, HR and admins ------------
+  // ---- Ask HR (v1.1) -------------------------------------------------------
+  // A private inquiry goes straight to the HR inbox (settings.hr_inbox_email, HR@scsalons.com) by email.
+  // The portal keeps only who wrote in, when, and when they acknowledged the receipt: no message content,
+  // no open / resolved status, no replies, and nothing is ever sent to the employee. HR contacts them
+  // directly. While the content waits for delivery it sits in hr_outbox, readable only by HR and admins.
   const isHr = (user) => can(user, 'hr.inbox');
-  function getInquiry(req) {
-    const q = db.prepare('SELECT * FROM hr_inquiries WHERE id = ?').get(idParam(req));
-    // Same answer whether it does not exist or is not yours.
-    if (!q || (q.author_id !== req.user.id && !isHr(req.user))) throw notFound('We could not find that inquiry.');
-    return q;
-  }
-  function shapeInquiries(rows) {
-    const users = shapes.usersByIds(rows.flatMap((q) => [q.author_id, q.assignee_id]).filter(Boolean));
-    return rows.map((q) => ({
-      id: q.id, category: q.category, subject: q.subject, body: q.body, status: q.status,
-      author: users.get(q.author_id) || null, assignee: q.assignee_id ? users.get(q.assignee_id) || null : null,
-      created_at: q.created_at, updated_at: q.updated_at,
-    }));
-  }
-  function detail(q) {
-    const msgs = db.prepare('SELECT * FROM hr_messages WHERE inquiry_id = ? ORDER BY id').all(q.id);
-    const users = shapes.usersByIds(msgs.map((m) => m.author_id));
-    return { inquiry: shapeInquiries([q])[0], messages: msgs.map((m) => ({ id: m.id, body: m.body, created_at: m.created_at, author: users.get(m.author_id) || null })) };
-  }
+  const relay = ctx.hrRelay;
 
   r.get('/hr/inquiries', (req, res) => {
-    const mineOnly = !isHr(req.user) || req.query.mine === '1';
-    const status = v.str(req.query.status, 'status', { max: 20, required: false });
-    const where = [];
-    const params = [];
-    if (mineOnly) { where.push('author_id = ?'); params.push(req.user.id); }
-    if (status === 'active') where.push("status IN ('open','in_progress','waiting')");
-    else if (status) { where.push('status = ?'); params.push(v.oneOf(status, 'status', STATUSES)); }
-    const rows = db.prepare(`SELECT * FROM hr_inquiries ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY updated_at DESC, id DESC LIMIT 300`).all(...params);
-    res.json({ items: shapeInquiries(rows) });
+    if (!isHr(req.user)) {
+      const rows = db.prepare('SELECT id, created_at, acknowledged_at FROM hr_submissions WHERE author_id = ? ORDER BY id DESC LIMIT 50').all(req.user.id);
+      return res.json({ items: rows });
+    }
+    const rows = db.prepare('SELECT * FROM hr_submissions ORDER BY id DESC LIMIT 300').all();
+    const users = shapes.usersByIds(rows.map((x) => x.author_id));
+    const waiting = db.prepare('SELECT o.submission_id, o.subject, o.body, o.attempts, o.created_at, h.author_id FROM hr_outbox o JOIN hr_submissions h ON h.id = o.submission_id ORDER BY o.submission_id').all();
+    const wUsers = shapes.usersByIds(waiting.map((x) => x.author_id));
+    res.json({
+      delivery: { configured: relay.configured(), to: relay.to() },
+      waiting: waiting.map((x) => ({ id: x.submission_id, subject: x.subject, body: x.body, attempts: x.attempts, created_at: x.created_at, author: wUsers.get(x.author_id) || null })),
+      items: rows.map((x) => ({ id: x.id, author: users.get(x.author_id) || null, created_at: x.created_at, acknowledged_at: x.acknowledged_at, delivered_at: x.delivered_at, delivery: x.delivery })),
+    });
   });
 
   r.post('/hr/inquiries', (req, res) => {
     const b = req.body || {};
-    const category = v.oneOf(b.category, 'Topic', CATEGORIES);
     const subject = v.str(b.subject, 'Subject', { max: 140 });
     const body = v.str(b.body, 'Your message', { max: 6000 });
     const now = nowIso();
-    const info = db.prepare("INSERT INTO hr_inquiries (author_id, category, subject, body, status, created_at, updated_at) VALUES (?,?,?,?, 'open', ?, ?)")
-      .run(req.user.id, category, subject, body, now, now);
-    const id = Number(info.lastInsertRowid);
-    // Notify HR without putting the subject line in the notification.
-    for (const h of db.prepare("SELECT id FROM users WHERE role = 'hr' AND status = 'active'").all()) notify(h.id, 'hr', 'New HR inquiry', `Topic: ${category}`, `/hr/${id}`);
-    audit(req, 'hr.inquiry_created', 'hr_inquiry', id, { category });
-    res.json(detail(db.prepare('SELECT * FROM hr_inquiries WHERE id = ?').get(id)));
-  });
-
-  r.get('/hr/inquiries/:id', (req, res) => {
-    const q = getInquiry(req);
-    if (q.author_id !== req.user.id) audit(req, 'hr.inquiry_viewed', 'hr_inquiry', q.id);
-    res.json(detail(q));
-  });
-
-  r.post('/hr/inquiries/:id/messages', (req, res) => {
-    const q = getInquiry(req);
-    const b = req.body || {};
-    const statusTo = v.oneOf(b.status_to, 'Status', STATUSES, { required: false });
-    if (statusTo && !isHr(req.user) && !(statusTo === 'closed' && q.author_id === req.user.id)) throw forbidden('HR updates the status of an inquiry.');
-    const body = v.str(b.body, 'Your message', { max: 6000, required: !statusTo });
-    const now = nowIso();
-    db.transaction(() => {
-      if (body) db.prepare('INSERT INTO hr_messages (inquiry_id, author_id, body, created_at) VALUES (?,?,?,?)').run(q.id, req.user.id, body, now);
-      const hrReply = isHr(req.user) && q.author_id !== req.user.id;
-      db.prepare('UPDATE hr_inquiries SET status = ?, updated_at = ?, assignee_id = COALESCE(assignee_id, ?) WHERE id = ?')
-        .run(statusTo || (hrReply && q.status === 'open' ? 'in_progress' : q.status), now, hrReply ? req.user.id : null, q.id);
+    const id = db.transaction(() => {
+      const info = db.prepare('INSERT INTO hr_submissions (author_id, created_at) VALUES (?, ?)').run(req.user.id, now);
+      const sid = Number(info.lastInsertRowid);
+      db.prepare('INSERT INTO hr_outbox (submission_id, subject, body, created_at) VALUES (?,?,?,?)').run(sid, subject, body, now);
+      return sid;
     })();
-    if (q.author_id !== req.user.id) {
-      notify(q.author_id, 'hr', 'HR replied to your inquiry', null, `/hr/${q.id}`);
-      audit(req, 'hr.inquiry_reply', 'hr_inquiry', q.id, { status_to: statusTo || null });
-    } else if (q.assignee_id) notify(q.assignee_id, 'hr', 'New message on an HR inquiry', null, `/hr/${q.id}`);
-    res.json(detail(db.prepare('SELECT * FROM hr_inquiries WHERE id = ?').get(q.id)));
+    // HR hears that something arrived, never what it says.
+    for (const u of db.prepare("SELECT id FROM users WHERE role IN ('hr','admin') AND status = 'active'").all()) {
+      if (u.id !== req.user.id && !relay.configured()) notify(u.id, 'hr', 'A private HR inquiry is waiting', null, '/hr');
+    }
+    audit(req, 'hr.inquiry_submitted', 'hr_submission', id);
+    relay.flush().catch(() => {});
+    res.json({ submission: { id, created_at: now, acknowledged_at: null } });
+  });
+
+  // The employee confirms they saw the receipt. Only the author can acknowledge.
+  r.post('/hr/inquiries/:id/acknowledge', (req, res) => {
+    const x = db.prepare('SELECT * FROM hr_submissions WHERE id = ?').get(idParam(req));
+    if (!x || x.author_id !== req.user.id) throw notFound('We could not find that inquiry.');
+    const at = x.acknowledged_at || nowIso();
+    db.prepare('UPDATE hr_submissions SET acknowledged_at = ? WHERE id = ?').run(at, x.id);
+    audit(req, 'hr.inquiry_acknowledged', 'hr_submission', x.id);
+    res.json({ submission: { id: x.id, created_at: x.created_at, acknowledged_at: at } });
+  });
+
+  // HR copied a waiting message into the HR inbox by hand: delete it from the portal.
+  r.post('/hr/outbox/:id/moved', (req, res) => {
+    if (!isHr(req.user)) throw notFound('We could not find that inquiry.');
+    const id = idParam(req);
+    if (!db.prepare('SELECT 1 FROM hr_outbox WHERE submission_id = ?').get(id)) throw notFound('That message has already been moved.');
+    relay.markDelivered(id, 'manual', req.user.id);
+    res.json({ ok: true });
   });
 
   // ---- resources and acknowledgements -------------------------------------
@@ -122,7 +108,7 @@ module.exports = (ctx) => {
     const unread = db.prepare(`SELECT p.id, p.body FROM posts p WHERE p.kind = 'announcement' AND p.deleted_at IS NULL AND p.created_at >= ? AND p.author_id != ? AND ${vis.sql}
       AND NOT EXISTS (SELECT 1 FROM post_reads x WHERE x.post_id = p.id AND x.user_id = ?) ORDER BY p.created_at DESC LIMIT 10`).all(since, req.user.id, ...vis.params, req.user.id);
     for (const p of unread) items.push({ kind: 'announcement', title: p.body.split('\n')[0].slice(0, 90), link: '/', due_on: null });
-    if (req.user.salon_id && req.user.role !== 'hr') {
+    if (req.user.salon_id && canChecklists(req.user)) {
       const today = todayLocal();
       const open = db.prepare(`SELECT t.name FROM checklist_templates t WHERE t.active = 1 AND t.key IN ('open','close')
         AND NOT EXISTS (SELECT 1 FROM checklist_runs x WHERE x.template_id = t.id AND x.salon_id = ? AND x.date = ? AND x.completed_at IS NOT NULL) ORDER BY t.id`).all(req.user.salon_id, today);

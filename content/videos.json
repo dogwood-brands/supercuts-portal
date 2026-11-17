@@ -1,6 +1,6 @@
 [
   {
-    "channel": "Guest experience",
+    "channel": "Job essentials",
     "title": "The guest consultation",
     "description": "The five questions to ask before every cut, and how to repeat the plan back.",
     "url": "https://academy.dogwoodbrands.com",
@@ -11,7 +11,7 @@
     "sample": false
   },
   {
-    "channel": "Guest experience",
+    "channel": "Job essentials",
     "title": "A great first visit",
     "description": "How to welcome a new guest from the door to the chair so they come back.",
     "url": null,
@@ -22,7 +22,7 @@
     "sample": true
   },
   {
-    "channel": "Guest experience",
+    "channel": "Job essentials",
     "title": "Cutting kids' hair without tears",
     "description": "Getting to eye level, explaining the clippers and knowing when to pause.",
     "url": null,
@@ -33,7 +33,7 @@
     "sample": true
   },
   {
-    "channel": "Technique",
+    "channel": "Advanced technique",
     "title": "Clean fades: guard work and blending",
     "description": "Setting the guideline, working up through guards and erasing the line.",
     "url": null,
@@ -44,7 +44,7 @@
     "sample": true
   },
   {
-    "channel": "Technique",
+    "channel": "Advanced technique",
     "title": "Scissor over comb fundamentals",
     "description": "Comb angle, hand position and checking your work in the mirror.",
     "url": null,
@@ -55,7 +55,7 @@
     "sample": true
   },
   {
-    "channel": "Technique",
+    "channel": "Advanced technique",
     "title": "Necklines and finishing",
     "description": "Squared, rounded or tapered: clean finishing and the hand mirror check.",
     "url": null,
@@ -66,7 +66,7 @@
     "sample": true
   },
   {
-    "channel": "Retail",
+    "channel": "Job essentials",
     "title": "How to position products and services",
     "description": "Recommend what you used and why. One product, in the chair.",
     "url": "https://academy.dogwoodbrands.com",
@@ -77,7 +77,7 @@
     "sample": false
   },
   {
-    "channel": "Retail",
+    "channel": "Job essentials",
     "title": "Offering the shampoo upgrade",
     "description": "When to ask, what to say and why the consultation is the moment.",
     "url": null,
@@ -110,7 +110,7 @@
     "sample": true
   },
   {
-    "channel": "Operations",
+    "channel": "Job essentials",
     "title": "Point of sale and cash handling",
     "description": "Drawer counts, deposits, refunds and voids, step by step.",
     "url": "https://academy.dogwoodbrands.com",
@@ -121,7 +121,7 @@
     "sample": false
   },
   {
-    "channel": "Operations",
+    "channel": "Job essentials",
     "title": "Opening and closing walkthrough",
     "description": "A manager walks through both checklists in real time.",
     "url": null,

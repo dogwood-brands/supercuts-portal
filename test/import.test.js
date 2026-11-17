@@ -79,7 +79,7 @@ test('the real daily ledger parses cleanly (temp database only)', { skip: !fs.ex
   assert.ok(out.from < out.to);
 });
 
-test('bulk user import creates accounts and reports bad lines', async () => {
+test('employee upload creates accounts, reports bad lines, and updates on re-upload', async () => {
   const admin = await p.as('zemar');
   const csv = ['first_name,last_name,role,salon_number,hire_date',
     'Ana,Example,stylist,8495,2024-03-01',
@@ -89,9 +89,60 @@ test('bulk user import creates accounts and reports bad lines', async () => {
     'Eve,Example,admin,,'].join('\n');
   const r = await admin.post('/api/admin/users/import', { csv });
   assert.equal(r.status, 200);
-  assert.equal(r.body.created.length, 3);
-  assert.equal(r.body.rejected.length, 2);
+  assert.equal(r.body.created.length, 2);
+  assert.equal(r.body.rejected.length, 3, 'no salon, unknown salon, and an upload never creates leadership');
   assert.ok(r.body.created.every((u) => u.temp_password.length >= 16));
+  assert.equal(r.body.created[0].username, 'aexample', 'first initial + last name');
+  assert.equal(r.body.created[1].username, 'bexample');
   assert.equal((await p.client().login(r.body.created[0].username, r.body.created[0].temp_password)).status, 200);
-  assert.equal(p.db.prepare('SELECT manager_user_id FROM salons WHERE salon_number = ?').get('80039').manager_user_id, r.body.created[1].id);
+  assert.equal(p.db.prepare('SELECT must_change_password FROM users WHERE id = ?').get(r.body.created[0].id).must_change_password, 1);
 });
+
+test('employee upload reads iSolved-style headers, flags shift managers, sets pay plan, and matches on employee ID', async () => {
+  const admin = await p.as('zemar');
+  const csv = ['Employee ID,First Name,Last Name,Location,Job Title,Hire Date',
+    '900001,Jo,Upload,02 ARCADIA 8768,Shift Manager,03/14/2025',
+    '900002,Jo,Uploadtwo,82298,Stylist,',
+    '900003,Jay,Upload,8768,Salon Manager,'].join('\n');
+  const dry = await admin.post('/api/admin/users/import', { csv, dry_run: true });
+  assert.equal(dry.body.dry_run, true);
+  assert.equal(dry.body.created.length, 3);
+  assert.equal(p.db.prepare("SELECT COUNT(*) n FROM users WHERE employee_id LIKE '9000%'").get().n, 0, 'a check changes nothing');
+  const r = await admin.post('/api/admin/users/import', { csv });
+  assert.equal(r.body.created.length, 3);
+  assert.deepEqual(r.body.created.map((c) => c.username), ['jupload', 'juploadtwo', 'jupload2']);
+  const jo = p.db.prepare("SELECT * FROM users WHERE employee_id = '900001'").get();
+  assert.equal(jo.shift_manager, 1);
+  assert.equal(jo.role, 'stylist');
+  assert.equal(jo.pay_plan, 'CA');
+  assert.equal(jo.hire_date, '2025-03-14');
+  assert.equal(p.db.prepare("SELECT pay_plan FROM users WHERE employee_id = '900002'").get().pay_plan, 'NV');
+  assert.equal(p.db.prepare("SELECT role FROM users WHERE employee_id = '900003'").get().role, 'salon_manager');
+  // Re-upload: Jo moves to Pasadena and is no longer a shift manager. Same person, no duplicate.
+  const again = await admin.post('/api/admin/users/import', { csv: ['Employee ID,First Name,Last Name,Location,Job Title', '900001,Jo,Upload,80039,Stylist'].join('\n') });
+  assert.equal(again.body.created.length, 0);
+  assert.equal(again.body.updated.length, 1);
+  const moved = p.db.prepare("SELECT * FROM users WHERE employee_id = '900001'").get();
+  assert.equal(moved.salon_id, p.salonId(80039));
+  assert.equal(moved.shift_manager, 0);
+  assert.equal(moved.password_hash, jo.password_hash, 'a re-upload never touches the password');
+  // The template downloads.
+  const t = await admin.get('/api/admin/users/template');
+  assert.equal(t.status, 200);
+});
+
+test('district leaders manage stylists and managers in their own district only', async () => {
+  const zm = await p.as('zemar');
+  const vegas = (await zm.post('/api/admin/users', { first_name: 'Vegas', last_name: 'Stylist', role: 'stylist', salon_id: p.salonId(82303) })).body.user;
+  const dl = await p.as('heather.branson'); // Westside & San Gabriel
+  const ok = await dl.post('/api/admin/users', { first_name: 'New', last_name: 'Westsider', role: 'stylist', salon_id: p.salonId(8495) });
+  assert.equal(ok.status, 200);
+  assert.equal((await dl.post('/api/admin/users', { first_name: 'No', last_name: 'Vegas', role: 'stylist', salon_id: p.salonId(82303) })).status, 403);
+  assert.equal((await dl.post('/api/admin/users', { first_name: 'No', last_name: 'Boss', role: 'district_leader', salon_id: p.salonId(8495) })).status, 403);
+  const list = (await dl.get('/api/admin/users')).body.items;
+  assert.ok(list.length > 0 && list.every((u) => ['stylist', 'salon_manager'].includes(u.role)));
+  assert.equal((await dl.post(`/api/admin/users/${ok.body.user.id}/reset-password`)).status, 200);
+  assert.equal((await dl.post(`/api/admin/users/${vegas.id}/reset-password`)).status, 403);
+  assert.equal((await dl.get('/api/admin/settings')).status, 403);
+});
+

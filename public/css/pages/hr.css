@@ -1,1 +1,17 @@
 @import url("/css/pages/modules.css");
+
+/* v1.1 Ask HR */
+.callout {
+  display: flex;
+  gap: var(--s-3);
+  align-items: flex-start;
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-md);
+  background: var(--warn-soft);
+  color: var(--ink-2);
+  font-size: var(--fs-14);
+}
+.prewrap {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

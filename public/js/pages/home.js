@@ -453,35 +453,53 @@ function statTile(label, value, format, extra) {
   return s;
 }
 
-async function quickStats(ctx) {
+/** "18 of 51". */
+const ofLabel = (n, of) => (n ? h('span', { class: 'home-rank t-num' }, `#${n}`, of ? h('small', null, ` of ${of}`) : null) : h('span', { class: 'home-rank t-num' }, '–'));
+
+/**
+ * Salon roles: the salon's own numbers from the DSR, ranked by net revenue (company, state, district),
+ * the five-box scorecard as "3 of 5 on track", and salon haircuts against last year. Salon-level only:
+ * the reports carry no per-stylist figures yet.
+ */
+async function quickStats(ctx, salonDetail) {
   const { user } = ctx;
   const host = h('section', { class: 'card home-stats' }, ui.skeleton('stat'));
   const salonRole = !!user.salon;
   (async () => {
     try {
       if (salonRole && (user.role === 'stylist' || user.role === 'salon_manager')) {
-        const s = await api.get('/me/stats');
+        const [s, d] = await Promise.all([api.get('/me/stats'), salonDetail]);
+        const hc = s.haircuts || {};
         const tiles = [
-          statTile('My salon this month', s.net_sales_c ?? s.service_c, (n) => money(n)),
-          statTile('Guests', s.guests, (n) => num(Math.round(n))),
+          statTile('Salon net revenue this month', s.net_sales_c, (n) => money(n)),
+          statTile('Salon haircuts vs last year', hc.vs_ly_pct, (n) => `${n > 0 ? '+' : ''}${pct(n)}`, {
+            tone: hc.vs_ly_pct === null || hc.vs_ly_pct === undefined ? undefined : hc.vs_ly_pct >= 0 ? 'good' : 'bad',
+            hint: hc.run_rate && hc.last_year ? `On pace for ${num(hc.run_rate)} this month · ${num(hc.last_year)} last year` : 'Last year not in the report yet',
+          }),
           statTile('Product share', s.product_pct, (n) => pct(n)),
           statTile('Sales per hour', s.srph_c, (n) => money(n, { cents: true })),
+          statTile('Average ticket', s.atv_c, (n) => money(n, { cents: true })),
         ];
+        const r = s.rank || {};
+        const boxes = d?.boxes || [];
+        const hit = boxes.filter((b) => b.state === 'ok').length;
         const side = h('div', { class: 'home-stats-side' },
-          s.rank_salon ? h('div', null, h('div', { class: 't-eyebrow' }, 'In my salon'), h('div', { class: 'home-rank t-num' }, `#${s.rank_salon}`)) : null,
-          s.rank_company ? h('div', null, h('div', { class: 't-eyebrow' }, 'Salon rank'), h('div', { class: 'home-rank t-num' }, `#${s.rank_company}`, s.of_company ? h('small', null, ` of ${s.of_company}`) : null)) : null,
-          s.trend?.length > 1 ? h('div', { class: 'hide-mobile' }, h('div', { class: 't-eyebrow' }, 'Last 14 days'), ui.sparkline(s.trend.slice(-14).map((d) => d.service_c), { w: 120, h: 34, tone: 'brand' })) : null);
-        mount(host, [h('div', { class: 'home-stats-grid' }, tiles), side,
-          s.shoutouts_received || s.streak_days ? h('div', { class: 'home-stats-foot' },
-            s.shoutouts_received ? h('span', { class: 'row gap-2' }, ui.icon('star', 15), `${plural(s.shoutouts_received, 'shout-out')} received this month`) : null,
-            s.streak_days ? h('span', { class: 'row gap-2' }, ui.icon('flame', 15), `${s.streak_days} day streak`) : null) : null]);
+          h('div', null, h('div', { class: 't-eyebrow' }, 'Company'), ofLabel(r.company, r.of_company)),
+          h('div', null, h('div', { class: 't-eyebrow' }, r.state_code ? `In ${r.state_code}` : 'State'), ofLabel(r.state, r.of_state)),
+          h('div', null, h('div', { class: 't-eyebrow' }, 'District'), ofLabel(r.district, r.of_district)),
+          boxes.length ? h('a', { class: 'home-score', href: '#/salon' }, h('div', { class: 't-eyebrow' }, 'Scorecard'),
+            h('span', { class: 'home-rank t-num' }, `${hit}`, h('small', null, ` of ${boxes.length} on track`))) : null);
+        mount(host, [h('div', { class: 'home-stats-grid is-5' }, tiles), side,
+          h('div', { class: 'home-stats-foot' },
+            h('span', { class: 't-muted' }, `Salon figures from the daily sales report${s.updated_through ? `, through ${dateShort(s.updated_through)}` : ''}. Rank is by net revenue.`),
+            s.shoutouts_received ? h('span', { class: 'row gap-2' }, ui.icon('star', 15), `${plural(s.shoutouts_received, 'shout-out')} received this month`) : null)]);
       } else if (ctx.can('kpi.company') || user.role === 'district_leader') {
         // 'company' level is already limited to the caller's scope, so a district leader gets their district.
         const level = ctx.can('kpi.company') ? 'company' : 'district';
         const o = await api.get('/kpi/overview', { level: 'company' });
         const t = o.totals || {};
         const tiles = [
-          statTile(level === 'company' ? 'Company net sales this month' : 'District net sales this month', t.mtd?.net_sales_c, (n) => money(n, { compact: true }), { delta: t.wow?.net_sales_pct, hint: 'vs last week' }),
+          statTile(level === 'company' ? 'Company net revenue this month' : 'District net revenue this month', t.mtd?.net_sales_c, (n) => money(n, { compact: true }), { delta: t.wow?.net_sales_pct, hint: 'vs last week' }),
           statTile('Pace to goal', t.goal?.pace_pct, (n) => pct(n), { tone: (t.goal?.pace_pct ?? 0) >= 100 ? 'good' : undefined }),
           statTile('Guests', t.mtd?.guests, (n) => num(Math.round(n)), { delta: t.wow?.guests_pct, hint: 'vs last week' }),
           statTile('Average ticket', t.mtd?.atv_c, (n) => money(n, { cents: true }), { delta: t.wow?.atv_pct, hint: 'vs last week' }),
@@ -498,6 +516,33 @@ async function quickStats(ctx) {
     }
   })();
   return host;
+}
+
+/** Who and where I am: the salon's photo, name, number, entity and district leader (v1.1). */
+function salonIdentity(ctx, salonDetail) {
+  const { user } = ctx;
+  const head = h('div', { class: 'home-hello-text' },
+    h('div', { class: 't-eyebrow' }, dateLong(new Date())),
+    h('h1', null, `${greeting()}, ${user.first_name || user.name}.`),
+    user.salon ? null : h('p', { class: 't-muted' }, user.title || roleLabel(user.role)));
+  if (!user.salon) return h('header', { class: 'home-hello' }, head);
+  const photo = h('div', { class: 'media home-id-photo' });
+  const lines = h('dl', { class: 'home-id-lines' });
+  const card = h('header', { class: 'card home-hello home-id' }, photo, h('div', { class: 'home-id-main' }, head,
+    h('div', { class: 'home-id-name' }, h('a', { href: '#/salon' }, user.salon.name), h('span', { class: 't-num t-muted' }, ` #${user.salon.salon_number}`)),
+    lines));
+  salonDetail.then((d) => {
+    const s = d?.salon;
+    if (!s) return;
+    if (s.photo_url) photo.appendChild(h('img', { src: s.photo_url, alt: `${s.name} salon` }));
+    const row = (label, value) => (value ? [h('dt', null, label), h('dd', null, value)] : null);
+    mount(lines, [
+      row('Entity', s.entity_name || s.entity),
+      row('District leader', s.district_leader?.name),
+      row('Salon manager', s.manager?.name),
+    ].filter(Boolean).flat());
+  }).catch(() => {});
+  return card;
 }
 
 function todoStrip() {
@@ -537,8 +582,9 @@ function rail(ctx) {
             h('div', { class: 't-sm t-clamp-3' }, p.body),
             h('div', { class: 't-xs t-muted' }, `${p.author?.name || 'Home office'} · ${timeAgo(p.created_at)}`)))))));
     }
-    const top = side.top_recognized || [];
-    blocks.push(ui.card({ title: 'Most recognized this month', flush: true },
+    // Shout leaderboard (v1.1): shout-outs received this month from teammates and leaders. Reactions do not count.
+    const top = side.shout_leaderboard || side.top_recognized || [];
+    blocks.push(ui.card({ title: 'Shout leaderboard', action: h('span', { class: 't-xs t-muted' }, 'This month'), flush: true },
       top.length
         ? h('div', { class: 'list' }, top.slice(0, 5).map((t, i) => h('a', { href: `#/people/${t.user?.id}` },
           h('span', { class: 'rank', dataset: { top: i + 1 } }, String(i + 1)),
@@ -564,11 +610,12 @@ function rail(ctx) {
     }
     blocks.push(ui.card({ title: 'Quick links', flush: true },
       h('div', { class: 'list' }, [
-        ['#/operations', 'checklist', "Today's checklists"],
+        ctx.can('checklists') ? ['#/operations', 'checklist', "Today's checklists"] : null,
         ['#/tube', 'play', 'Training videos'],
         ['#/standards', 'book', 'Brand standards'],
-        ['#/hr', 'lifebuoy', ctx.can('hr.inbox') ? 'HR inbox' : 'Ask HR a question'],
-      ].map(([href, ic, label]) => h('a', { href }, ui.icon(ic, 18), h('span', { class: 'grow' }, label), ui.icon('chevronRight', 14))))));
+        ['#/pay-plan', 'gift', 'My pay plan'],
+        ['#/hr', 'lifebuoy', ctx.can('hr.inbox') ? 'HR inbox' : 'Ask HR privately'],
+      ].filter(Boolean).map(([href, ic, label]) => h('a', { href }, ui.icon(ic, 18), h('span', { class: 'grow' }, label), ui.icon('chevronRight', 14))))));
     mount(host, blocks.map((b, i) => ui.reveal(b, i * 60)));
   })();
   return host;
@@ -581,7 +628,6 @@ function feed(ctx) {
   const tabsDef = [
     { key: 'company', label: 'Company' },
     ...(user.salon ? [{ key: 'salon', label: 'My salon' }] : []),
-    { key: 'shoutouts', label: 'Shout-outs' },
   ];
   const list = h('div', { class: 'feed-list stack', 'aria-live': 'polite' });
   const sentinel = h('div', { class: 'feed-sentinel', 'aria-hidden': 'true' });
@@ -659,12 +705,10 @@ export default {
     cleanup = [];
     const { user } = ctx;
     const f = feed(ctx);
-    const header = h('header', { class: 'home-hello' },
-      h('div', { class: 't-eyebrow' }, dateLong(new Date())),
-      h('h1', null, `${greeting()}, ${user.first_name || user.name}.`),
-      h('p', { class: 't-muted' }, user.salon ? `${user.salon.name} · ${user.salon.market || ''}`.replace(/ · $/, '') : (user.title || roleLabel(user.role))));
+    const salonDetail = user.salon ? api.get(`/salons/${user.salon.id}`).catch(() => null) : Promise.resolve(null);
+    const header = salonIdentity(ctx, salonDetail);
     return h('div', { class: 'layout-rail home' },
-      h('div', { class: 'stack' }, header, await quickStats(ctx), todoStrip(), composer(ctx, (post) => f.prepend(post)), f.el),
+      h('div', { class: 'stack' }, header, await quickStats(ctx, salonDetail), todoStrip(), composer(ctx, (post) => f.prepend(post)), f.el),
       rail(ctx));
   },
   teardown() {

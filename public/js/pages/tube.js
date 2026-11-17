@@ -79,37 +79,54 @@ function videoCard(v, i, repaint) {
   return ui.reveal(card, Math.min(i, 6) * 40);
 }
 
+// Two channels (v1.1): job essentials (point of sale, cash handling, pay plans; mostly required) and
+// advanced technique (short refreshers and skill building; mostly optional). Assigned courses live in Academy.
+const CHANNEL_BLURB = {
+  'Job essentials': 'Point of sale, cash handling, pay plans and the everyday parts of the job.',
+  'Advanced technique': 'Short refreshers and new skills, from the chair.',
+};
+
 export default {
   title: 'SC Tube',
   css: true,
-  render() {
+  render(ctx) {
     const host = h('div');
-    const picker = h('div', { class: 'toolbar' });
+    const academy = ctx.settings?.academy_url || ACADEMY;
     let items = [];
-    let channel = 'all';
     const view = () => {
-      const shown = channel === 'all' ? items : items.filter((v) => v.channel === channel);
       if (!items.length) return ui.empty({ icon: 'play', title: 'No videos yet', body: 'Training videos will appear here as they are published.' });
-      if (!shown.length) return ui.empty({ icon: 'play', title: 'Nothing in this channel yet' });
       const repaint = () => mount(host, view());
-      return h('div', { class: 'grid content-grid' }, shown.map((v, i) => videoCard(v, i, repaint)));
+      const popular = [...items].filter((v) => playable(v.url).kind !== 'soon').sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 4);
+      const channels = [...new Set(['Job essentials', 'Advanced technique', ...items.map((v) => v.channel || 'General')])];
+      return h('div', { class: 'stack-lg' },
+        popular.length ? h('section', { class: 'stack' },
+          h('h2', null, 'Popular right now'),
+          h('div', { class: 'grid content-grid' }, popular.map((v, i) => videoCard(v, i, repaint)))) : null,
+        channels.map((c) => {
+          const list = items.filter((v) => (v.channel || 'General') === c);
+          return h('section', { class: 'stack' },
+            h('div', null, h('h2', null, c), CHANNEL_BLURB[c] ? h('p', { class: 't-sm t-muted' }, CHANNEL_BLURB[c]) : null),
+            list.length
+              ? h('div', { class: 'grid content-grid' }, list.map((v, i) => videoCard(v, i, repaint)))
+              : h('div', { class: 'card' }, ui.empty({ icon: 'play', title: 'First videos coming soon', body: 'This channel is being filmed now.' })));
+        }));
     };
     region(host, async () => {
       const res = await api.get('/videos');
       items = res.items || [];
-      const channels = (res.channels && res.channels.length ? res.channels.map((c) => (typeof c === 'string' ? c : c.key || c.channel || c.name)) : [...new Set(items.map((v) => v.channel))]).filter(Boolean);
-      mount(picker, channels.length > 1
-        ? ui.segmented([{ key: 'all', label: 'All channels' }, ...channels.map((c) => ({ key: c, label: c }))], channel, (k) => { channel = k; mount(host, view()); })
-        : null);
       return view();
     });
     return h('div', null,
       ui.pageHeader({
-        eyebrow: 'Standards and training', title: 'SC Tube',
-        sub: 'Short videos from our own salons. Pick a channel, choose a video, try it on your next guest.',
-        actions: h('a', { class: 'btn btn-secondary', href: ACADEMY, target: '_blank', rel: 'noopener' }, ui.icon('external', 18), 'Supercuts Academy'),
+        eyebrow: 'Excellence', title: 'SC Tube',
+        sub: 'Short videos from our own salons. Watch one, try it on your next guest. Assigned courses are in Supercuts Academy.',
       }),
-      picker,
+      h('a', { class: 'card card-link tube-academy', href: academy, target: '_blank', rel: 'noopener' },
+        h('span', { class: 'job-tile-icon' }, ui.icon('book', 22)),
+        h('div', { class: 'grow' },
+          h('h3', null, 'Supercuts Academy'),
+          h('p', { class: 't-sm t-muted' }, 'Your assigned courses, quizzes and certificates. Opens in a new tab.')),
+        ui.icon('external', 18)),
       host);
   },
 };

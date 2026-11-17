@@ -23,7 +23,8 @@ const DISTRICTS = [
   { key: 'karen', name: 'High Desert & Inland North', leader: ['Karen', 'Chacon'] },
   { key: 'brittney', name: 'Inland South & Temecula Valley', leader: ['Brittney', 'Garrett'] },
   { key: 'alana', name: 'Foothill & Pomona Valley', leader: ['Alana', 'Kaiaokamalie'] },
-  { key: 'heather', name: 'Westside & San Gabriel', leader: ['Heather', 'Branson'] },
+  // Heather Branson is Vice President and still leads this district (v1.1 correction, 2026-11-12).
+  { key: 'heather', name: 'Westside & San Gabriel', leader: ['Heather', 'Branson'], title: 'Vice President' },
   { key: 'juana', name: 'Las Vegas East & Central', leader: ['Juana', 'Lucio'] },
   { key: 'sarah', name: 'Las Vegas North & West', leader: ['Sarah', 'Nakagawa'] },
   { key: 'kirsten', name: 'Phoenix', leader: ['Kirsten', 'Hepp'] },
@@ -146,12 +147,16 @@ function seedOrg(db, { passwordFor = () => null, now = new Date().toISOString() 
       const username = `${d.leader[0]}.${d.leader[1]}`.toLowerCase();
       let row = findUser.get(username);
       if (!row) {
-        const info = insUser.run(null, username, DISABLED_HASH, 0, 'district_leader', d.leader[0], d.leader[1], 'District Leader', districtId.get(d.key), now);
+        const info = insUser.run(null, username, DISABLED_HASH, 0, 'district_leader', d.leader[0], d.leader[1], d.title || 'District Leader', districtId.get(d.key), now);
         row = { id: Number(info.lastInsertRowid) };
       }
       db.prepare('UPDATE districts SET leader_user_id = COALESCE(leader_user_id, ?) WHERE id = ?').run(row.id, districtId.get(d.key));
       out.districtLeaders.push({ username, id: row.id, district_id: districtId.get(d.key) });
     }
+
+    // Directory "portfolio leadership" (agreed 2026-11-12): Heather, Sam and Kirsten. FC / Emory / Chris pending a decision.
+    db.prepare("UPDATE users SET title = 'Vice President' WHERE username = 'heather.branson' AND title = 'District Leader'").run();
+    db.prepare("UPDATE users SET directory_listed = 1 WHERE username IN ('heather.branson', 'samantha', 'kirsten.hepp')").run();
 
     const insSalon = db.prepare(`INSERT OR IGNORE INTO salons (salon_number, name, concept, address, city, state, zip, phone, shopping_center, market_id, district_id, entity_id, hours_json, lat, lng, status)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'active')`);

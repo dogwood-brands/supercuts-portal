@@ -1110,3 +1110,47 @@
   border-radius: var(--r-lg);
   background: var(--surface);
 }
+
+/* ---- v1.1: work photo grid (salon page, profile album) ------------------ */
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--s-3);
+}
+.photo-tile {
+  position: relative;
+  display: block;
+  aspect-ratio: 1;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--surface-3);
+  color: inherit;
+  text-decoration: none;
+}
+.photo-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 200ms ease-out;
+}
+.photo-tile:hover img {
+  transform: scale(1.03);
+}
+.photo-tile-cap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: var(--s-5) var(--s-2) var(--s-2);
+  font-size: var(--fs-12);
+  color: var(--night-ink);
+  background: linear-gradient(to top, rgba(18, 18, 21, 0.78), rgba(18, 18, 21, 0));
+}
+.photo-tile-del {
+  position: absolute;
+  top: var(--s-2);
+  right: var(--s-2);
+}
+@media (prefers-reduced-motion: reduce) {
+  .photo-tile img { transition: none; }
+}

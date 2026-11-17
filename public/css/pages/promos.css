@@ -1,1 +1,20 @@
 @import url("/css/pages/modules.css");
+
+/* v1.1 promo explainer video */
+.promo-video video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--night);
+  border-radius: 0 0 var(--r-lg) var(--r-lg);
+}
+.promo-card-video {
+  color: var(--brand-ink);
+}
+.promo-video iframe {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: 0 0 var(--r-lg) var(--r-lg);
+}

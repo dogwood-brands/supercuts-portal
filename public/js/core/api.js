@@ -90,4 +90,9 @@ export const api = {
     const blob = await shrink(file);
     return request('PUT', '/uploads', { raw: blob, contentType: 'image/jpeg' });
   },
+  /** Promo explainer videos (v1.1): sent as-is, MP4 / MOV / WebM, home office only. */
+  uploadVideo(file) {
+    const type = /webm$/i.test(file.type) ? 'video/webm' : /quicktime/i.test(file.type) ? 'video/quicktime' : 'video/mp4';
+    return request('PUT', '/uploads/video', { raw: file, contentType: type });
+  },
 };

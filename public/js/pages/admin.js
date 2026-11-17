@@ -6,10 +6,10 @@ import { ui } from '../core/ui.js';
 
 const SECTIONS = [
   { key: 'overview', label: 'Overview', icon: 'chart', any: ['admin.users', 'admin.content', 'admin.settings'] },
-  { key: 'people', label: 'People', icon: 'users', any: ['admin.users'] },
+  { key: 'people', label: 'People', icon: 'users', any: ['admin.users', 'users.district'] },
   { key: 'org', label: 'Salons and districts', icon: 'store', any: ['admin.settings'] },
   { key: 'content', label: 'Content', icon: 'book', any: ['admin.content'] },
-  { key: 'goals', label: 'Goals', icon: 'target', any: ['admin.settings'] },
+  { key: 'goals', label: 'Goals', icon: 'target', any: ['admin.settings', 'goals.edit'] },
   { key: 'import', label: 'Data import', icon: 'upload', any: ['admin.settings'] },
   { key: 'moderation', label: 'Moderation', icon: 'flag', any: ['moderate'] },
   { key: 'audit', label: 'Audit log', icon: 'shield', any: ['admin.settings'] },

@@ -16,17 +16,20 @@ Ten wrong passwords in 15 minutes locks sign-in for that username for 15 minutes
 
 | Role | Who it is for | What they see | What they can do |
 |---|---|---|---|
-| Stylist | Everyone behind the chair | The company feed, their own salon and its numbers, promos, standards, training, checklists | Post, comment, react, give shout-outs, tick off checklists, open support tickets, ask HR a private question |
+| Stylist | Everyone behind the chair | The company feed, their own salon and its numbers, promos, standards, training, their pay plan | Post, comment, react, give shout-outs to their own team, keep a 10-photo work album, open support tickets, send HR a private inquiry |
+| Shift manager | A stylist with **Shift manager** turned on | Everything a stylist sees, plus checklists and store alerts | Tick off checklist items (each tick records who and when) |
 | Salon manager | The manager of one salon | Everything a stylist sees, plus full numbers and the team for their salon | Post announcements to their salon, sign off checklists, update salon alerts |
-| District leader | Leader of a group of salons | Every salon in their district, with a district rollup | Post announcements to their district, work support tickets for their salons |
+| District leader | Leader of a group of salons | Every salon in their district, with a district rollup | Post announcements to their district, work support tickets, and add people, reset passwords and turn off sign-ins for stylists and managers in their district |
 | HR | HR and payroll | All people and the private HR inbox. No sales dollars. | Add and manage people, answer HR questions, edit content, moderate posts |
-| Leadership | Executives | Every salon and the company rollup | Post company announcements. Read only everywhere else. |
+| Leadership | Executives | Every salon and the company rollup | Post company announcements and set each salon's monthly sales goal. Read only everywhere else. |
 | Administrator | Home office owners of the portal | Everything | Everything, including goals, data import, settings and the audit log |
 
 Two rules the portal enforces no matter what:
 
 - A stylist or manager never sees another salon's dollar figures. They see its name, address, hours, manager, rank and pace percentage only.
-- A private HR question is visible to the person who asked, HR and administrators. Managers, district leaders and leadership cannot read it.
+- The portal keeps no HR message content. An Ask HR message goes to the HR inbox (HR@scsalons.com) and is then deleted; the portal keeps only who wrote in, when, and when they acknowledged the receipt.
+- Checklists and store alerts are for shift managers and above. Stylists do not see them.
+- Shout-outs go to your own team: your salon, or your district for district leaders. Leadership can recognise anyone.
 
 ## People
 
@@ -34,11 +37,19 @@ Admin console, **People**.
 
 **Add one person.** Choose **Add a person**, enter their name, role and salon (stylists and salon managers need a salon). The portal shows a one-time password once. Copy it and give it to them privately. They pick their own password the first time they sign in.
 
-**Add many people.** Choose **Import roster** and select a spreadsheet saved as CSV. It needs the columns `first_name`, `last_name` and `role`, plus `salon_number` for stylists and salon managers. Up to 300 people per file. Afterwards the portal lists each new username with its one-time password, and any rows it skipped with the reason. Copy the list before you close it.
+**Upload employees.** Choose **Upload employees** and select the iSolved employee export or our template (**Download the template** in the same window), saved as CSV. Up to 1,000 people per file.
+
+- Needed: first name, last name, salon number. Optional: job title, shift manager (yes / no), employee ID, hire date, phone, email, pay plan (CA, NV or AZ). Common iSolved header names ("First Name", "Location", "Job Title", "Employee ID") are recognised.
+- Press **Check the file** first. Nothing changes; you see who would be created, who would be updated, and which rows would be skipped and why.
+- Press **Upload**. New people get a username (first initial plus last name, like `jreyes`, then `jreyes2`) and a temporary password they must change at first sign-in. No email account is needed. **Download sign-ins (CSV)** before closing; passwords are shown only once. Hand them out through the district leaders.
+- Job titles decide the role: "Salon Manager" becomes a salon manager; "Shift Manager", "Shift Lead" or "Assistant Manager" becomes a stylist with **Shift manager** on. An upload never creates leadership accounts.
+- Pay plan follows the salon's state unless the file says otherwise.
+- With an employee ID, uploading again **updates** salon, title, shift manager and pay plan instead of creating a duplicate. It never changes a password or username.
+- District leaders can upload, add and reset only stylists and managers in their own district.
 
 **Change someone's role or salon.** Open the person from the list, change the field, **Save changes**. Moving a salon manager updates the salon's manager automatically.
 
-**Someone leaves.** Set their status to **Inactive**. They are signed out at once and cannot sign in again. Their posts and history stay. Do not delete people.
+**Someone leaves.** Set their status to **Inactive**. They are signed out at once and cannot sign in again. Their posts and history stay. Do not delete people. This step is part of the offboarding checklist: whoever offboards the person in iSolved also turns off their portal sign-in the same day.
 
 **Someone is locked out or forgot their password.** Choose **Reset password**. It signs them out on every device and shows a new one-time password once.
 
@@ -73,13 +84,14 @@ The content loaded for the demo is sample material. Replace it with the company'
 
 ## Goals
 
-Admin console, **Goals** (administrators only).
+Admin console, **Goals** (administrators and leadership).
 
-The only goal the portal uses is each salon's monthly sales target, and it comes from the daily sales report. Pace to goal and "projected" use the report's own run rate, so the portal and the DSR always agree.
+Each salon's monthly sales goal loads from the DSR twice a day. Pace to goal and "projected" use the report's own run rate, so the portal and the DSR agree.
 
-- The sales goal for each month is filled in automatically every time the sales load. You do not need to enter it.
+- To set a different goal, type it and **Save goals**. That goal is kept for the month ("Set by hand") and the DSR no longer overwrites it. **Use DSR** puts a salon back on the report's goal from the next refresh.
+- Salon **rank** is by total net revenue for the month, not by progress to goal. Goals drive pace to goal and the scorecard ("3 of 5 on track").
+- Haircut goal, haircut pace and last year's haircuts come from the DSR "BY TL" sheet and are read only. The salon page shows "Salon haircuts vs last year" from the last two.
 - Product share and sales per hour have no goal. Each salon is compared with the company median instead.
-- The screen still lets you type goals and **Save goals**, but the next sales load replaces the sales goal with the report's target and clears the other two columns. Treat this screen as read only while sales come from the reports.
 
 ## Sales numbers
 
@@ -100,13 +112,13 @@ Either way the decision is recorded in the audit log with your name.
 
 ## HR inbox
 
-In the left-hand menu, **HR inbox** (HR and administrators). Everyone else sees **Ask HR** in the same place.
+In the left-hand menu, **HR inbox** (HR and administrators). Everyone else sees **Ask HR privately**.
 
-- New questions arrive as open. The first HR person to reply picks it up.
-- Reply in the thread and set the status: in progress, waiting, resolved or closed.
-- The person who asked is notified of each reply.
-
-These threads are private. Do not copy their content into posts, tickets or email.
+- An employee writes a subject and a message. They see a receipt ("an HR team member will reach out") and must press **Acknowledge**; the time is recorded.
+- The message goes to the HR inbox set under Settings (HR@scsalons.com). Once delivered it is deleted from the portal. The portal never replies, never emails the employee and keeps no open or resolved status.
+- Until automatic delivery is switched on, messages wait at the top of this page. **Copy message**, paste it into the HR inbox, then press **Moved to HR inbox**, which deletes it here.
+- Below that, **Who wrote in** lists only the person, when they wrote, whether they acknowledged and when it reached the HR inbox. Rows older than two years are removed.
+- HR contacts the employee directly through their main contact method.
 
 ## Support tickets
 

@@ -34,7 +34,7 @@ export default function overview(ctx) {
         ui.card({ title: 'Waiting on the home office', flush: true },
           h('div', { class: 'list' },
             queue('ticket', 'Open support tickets', o.open_tickets, '#/tickets'),
-            queue('lifebuoy', 'Open HR inquiries', o.open_hr, '#/hr'),
+            queue('lifebuoy', 'HR messages waiting to be moved', o.open_hr, '#/hr'),
             ctx.can('moderate') ? queue('flag', 'Reported posts', o.open_reports ?? 0, '#/admin/moderation') : null)),
         ui.card({ title: 'Sign-offs and adoption' },
           h('div', { class: 'row gap-6 row-wrap' },

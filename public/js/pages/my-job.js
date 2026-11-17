@@ -93,20 +93,24 @@ export default {
   css: true,
   render(ctx) {
     const u = ctx.user;
+    const isolved = ctx.settings?.isolved_url;
     const tiles = [
-      { icon: 'lifebuoy', title: ctx.can('hr.inbox') ? 'HR inbox' : 'Ask HR', body: ctx.can('hr.inbox') ? 'Questions from the team, waiting for an answer.' : 'A private question about pay, your schedule, benefits or leave.', href: '#/hr' },
+      { icon: 'lifebuoy', title: ctx.can('hr.inbox') ? 'HR inbox' : 'Private inquiry to Human Resources', body: ctx.can('hr.inbox') ? 'Private inquiries from the team.' : 'Questions about pay, schedules, benefits or leave. Only you and HR can read it.', href: '#/hr' },
+      { icon: 'gift', title: 'My pay plan', body: 'How your pay plan works and the numbers it is built on.', href: '#/pay-plan' },
+      isolved
+        ? { icon: 'external', title: 'Benefits in iSolved', body: 'Benefits, eligibility, pay stubs and your details. Opens iSolved in a new tab.', href: isolved, external: true }
+        : { icon: 'external', title: 'Benefits in iSolved', body: 'Benefits and eligibility are in iSolved. Ask HR for the sign-in link.', href: '#/hr' },
       { icon: 'book', title: 'Employee handbook', body: 'The handbook and the policies we all work by.', href: '#/standards?section=hr' },
       { icon: 'play', title: 'Training', body: 'Short videos on technique, guests, retail and running the salon.', href: '#/tube' },
-      { icon: 'gift', title: 'Pay and benefits', body: 'How pay works, benefits you can enrol in, and who to ask.', href: '#/standards?section=policies' },
-      { icon: 'calendar', title: 'My schedule', body: 'Your manager posts the schedule in the salon. Changes go through them. Key dates are on the calendar.', href: '#/operations?tab=calendar' },
       { icon: 'users', title: 'Directory', body: 'Find your district leader, the home office or another salon.', href: '#/directory' },
     ];
+
     return h('div', null,
       ui.pageHeader({
         eyebrow: 'My job',
         title: `${greeting()}, ${u.first_name || (u.name || '').split(' ')[0]}.`,
         sub: 'Everything about working here that is yours: what needs doing, your numbers, and where to get help.',
-        actions: ui.button(ctx.can('hr.inbox') ? 'Open HR inbox' : 'Ask HR a question', { variant: 'secondary', icon: 'lifebuoy', onClick: () => ctx.navigate(ctx.can('hr.inbox') ? '/hr' : '/hr?new=1') }),
+        actions: ui.button(ctx.can('hr.inbox') ? 'Open HR inbox' : 'Ask HR privately', { variant: 'secondary', icon: 'lifebuoy', onClick: () => ctx.navigate('/hr') }),
       }),
       h('div', { class: 'layout-rail' },
         h('div', { class: 'stack-lg' },

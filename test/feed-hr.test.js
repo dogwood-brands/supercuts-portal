@@ -99,19 +99,27 @@ test('who may post what, and where', async () => {
 
 test('shout-outs need a teammate, accept company values, and notify the person', async () => {
   const peer = p.stylistAt(8495, 1);
+  // v1.1: shout-outs stay inside your own team. A Marina Del Rey stylist cannot recognise Pasadena.
+  assert.equal((await stylist.post('/api/posts', { kind: 'shoutout', body: 'Nice', audience_type: 'company', targets: [{ type: 'salon', id: PAS }] })).status, 400);
+  assert.equal((await stylist.post('/api/posts', { kind: 'shoutout', body: 'Nice', audience_type: 'company', targets: [{ type: 'user', id: p.stylistAt(80039).id }] })).status, 400);
+  const picker = await stylist.get('/api/mentions?q=a');
+  assert.ok(picker.body.users.every((u) => u.salon && u.salon.id === MDR), 'the picker lists only teammates');
+  assert.ok(picker.body.salons.every((x) => x.id === MDR));
   assert.equal((await stylist.post('/api/posts', { kind: 'shoutout', body: 'Great job', audience_type: 'company' })).status, 400);
   assert.equal((await stylist.post('/api/posts', { kind: 'shoutout', body: 'Go me', audience_type: 'company', targets: [{ type: 'user', id: stylist.me.id }] })).status, 400);
   assert.equal((await stylist.post('/api/posts', { kind: 'shoutout', body: 'x', audience_type: 'company', targets: [{ type: 'user', id: peer.id, value_key: 'made-up' }] })).status, 400);
   const ok = await stylist.post('/api/posts', { kind: 'shoutout', body: 'Thank you for covering my shift.', audience_type: 'company',
-    targets: [{ type: 'user', id: peer.id, value_key: 'team_player' }, { type: 'salon', id: PAS, value_key: null }] });
+    targets: [{ type: 'user', id: peer.id, value_key: 'team_player' }, { type: 'salon', id: MDR, value_key: null }] });
   assert.equal(ok.status, 200);
   assert.equal(ok.body.post.targets.length, 2);
-  assert.equal(ok.body.post.targets.find((t) => t.type === 'salon').label, 'Pasadena');
+  assert.equal(ok.body.post.targets.find((t) => t.type === 'salon').label, 'Marina Del Rey');
+  // Leadership can recognise anyone.
+  assert.equal((await exec.post('/api/posts', { kind: 'shoutout', body: 'Well done', audience_type: 'company', targets: [{ type: 'salon', id: PAS }] })).status, 200);
   const note = p.db.prepare("SELECT title FROM notifications WHERE user_id = ? AND kind = 'shoutout' ORDER BY id DESC").get(peer.id);
   assert.match(note.title, /gave you a shout-out/);
   const side = await stylist.get('/api/feed/sidebar');
-  assert.deepEqual(Object.keys(side.body).sort(), ['celebrations', 'pinned', 'top_recognized']);
-  assert.ok(side.body.top_recognized.length > 0 && side.body.top_recognized[0].count >= 1);
+  assert.deepEqual(Object.keys(side.body).sort(), ['celebrations', 'pinned', 'shout_leaderboard', 'top_recognized']);
+  assert.ok(side.body.shout_leaderboard.length > 0 && side.body.shout_leaderboard.length <= 5 && side.body.shout_leaderboard[0].count >= 1);
   assert.ok(side.body.celebrations.length >= 2, 'the demo salon has a birthday and an anniversary coming up');
   assert.ok(side.body.pinned.length >= 1);
   const m = await stylist.get('/api/mentions?q=a');
@@ -171,37 +179,64 @@ test('moderation: reports go to HR and admins, removal is audited', async () => 
   assert.ok(p.db.prepare("SELECT 1 FROM audit_log WHERE action = 'post.removed' AND target_id = ?").get(other.id));
 });
 
-test('HR inquiries are private to the author, HR and admins', async () => {
-  const made = await stylist.post('/api/hr/inquiries', { category: 'pay', subject: 'Missing hours', body: 'My stub is short four hours.' });
+test('Ask HR keeps no message content: who and when only, HR moves it to the HR inbox', async () => {
+  const made = await stylist.post('/api/hr/inquiries', { subject: 'Missing hours', body: 'My stub is short four hours.' });
   assert.equal(made.status, 200);
-  const id = made.body.inquiry.id;
-  // Not the manager, not the district leader, not executives, not a teammate.
+  const id = made.body.submission.id;
+  assert.equal(made.body.submission.acknowledged_at, null);
+  // The topic list is gone: subject and message only.
+  assert.equal((await stylist.post('/api/hr/inquiries', { subject: 'x' })).status, 400);
+  // Only the author can acknowledge the receipt.
+  assert.equal((await pasStylist.post(`/api/hr/inquiries/${id}/acknowledge`)).status, 404);
+  const ack = await stylist.post(`/api/hr/inquiries/${id}/acknowledge`);
+  assert.ok(ack.body.submission.acknowledged_at);
+  // The author sees dates only; nobody in the field or leadership sees anyone else's.
+  const mine = (await stylist.get('/api/hr/inquiries')).body.items;
+  assert.ok(mine.some((x) => x.id === id));
+  assert.equal(/Missing hours|short four/.test(JSON.stringify(mine)), false);
   for (const c of [manager, dl, exec, pasStylist]) {
-    assert.equal((await c.get(`/api/hr/inquiries/${id}`)).status, 404);
-    assert.equal((await c.post(`/api/hr/inquiries/${id}/messages`, { body: 'peek' })).status, 404);
-    assert.equal((await c.get('/api/hr/inquiries')).body.items.some((q) => q.id === id), false);
+    const r = await c.get('/api/hr/inquiries');
+    assert.equal(r.body.items.some((q) => q.id === id), false);
+    assert.equal('waiting' in r.body, false);
+    assert.equal((await c.post(`/api/hr/outbox/${id}/moved`)).status, 404);
   }
-  assert.equal((await exec.get('/api/hr/inquiries')).body.items.length, 0, 'executives see only their own');
-  assert.equal((await stylist.get(`/api/hr/inquiries/${id}`)).status, 200);
-  assert.ok((await hr.get('/api/hr/inquiries')).body.items.some((q) => q.id === id));
-  assert.ok((await admin.get('/api/hr/inquiries')).body.items.some((q) => q.id === id));
-  assert.equal((await stylist.post(`/api/hr/inquiries/${id}/messages`, { status_to: 'resolved' })).status, 403);
-  const reply = await hr.post(`/api/hr/inquiries/${id}/messages`, { body: 'Looking into it today.' });
-  assert.equal(reply.status, 200);
-  assert.equal(reply.body.inquiry.status, 'in_progress');
-  assert.equal(reply.body.inquiry.assignee.id, hr.me.id);
-  assert.equal(reply.body.messages.length, 1);
-  // The notification to the stylist must not carry the content of the inquiry.
-  const note = p.db.prepare("SELECT title, body FROM notifications WHERE user_id = ? AND kind = 'hr' ORDER BY id DESC").get(stylist.me.id);
-  assert.equal(note.body, null);
+  // HR and admins see the waiting message until it is moved into the HR inbox.
+  const inbox = (await hr.get('/api/hr/inquiries')).body;
+  assert.equal(inbox.delivery.configured, false);
+  assert.equal(inbox.delivery.to, 'HR@scsalons.com');
+  assert.ok(inbox.waiting.some((w) => w.id === id && w.body.includes('short four')));
+  assert.ok((await admin.get('/api/hr/inquiries')).body.waiting.some((w) => w.id === id));
+  // HR is told something arrived, never what it says.
   const hrNote = p.db.prepare("SELECT title, body FROM notifications WHERE user_id = ? AND kind = 'hr' ORDER BY id DESC").get(hr.me.id);
   assert.doesNotMatch(`${hrNote.title} ${hrNote.body}`, /Missing hours|short four/);
-  assert.equal((await stylist.post(`/api/hr/inquiries/${id}/messages`, { body: 'Thank you!', status_to: 'closed' })).status, 200);
-  const audited = p.db.prepare("SELECT action FROM audit_log WHERE target_type = 'hr_inquiry' AND target_id = ?").all(id).map((a) => a.action);
-  assert.ok(audited.includes('hr.inquiry_created') && audited.includes('hr.inquiry_reply'));
-  assert.equal((await stylist.post('/api/hr/inquiries', { category: 'gossip', subject: 'x', body: 'y' })).status, 400);
-  // Admin overview hides the HR count from people without the HR inbox... and HR data never appears in search.
+  // Nothing is ever sent to the employee.
+  assert.equal(p.db.prepare("SELECT COUNT(*) n FROM notifications WHERE user_id = ? AND kind = 'hr'").get(stylist.me.id).n, 0);
+  assert.equal((await hr.post(`/api/hr/outbox/${id}/moved`)).status, 200);
+  assert.equal(p.db.prepare('SELECT COUNT(*) n FROM hr_outbox WHERE submission_id = ?').get(id).n, 0);
+  const row = p.db.prepare('SELECT * FROM hr_submissions WHERE id = ?').get(id);
+  assert.ok(row.delivered_at && row.delivery === 'manual');
+  assert.deepEqual(Object.keys(row).sort(), ['acknowledged_at', 'author_id', 'created_at', 'delivered_at', 'delivery', 'id']);
+  // Content never reaches the audit log or search either.
+  assert.equal(/Missing hours|short four/.test(JSON.stringify(p.db.prepare('SELECT meta_json FROM audit_log').all())), false);
   assert.equal(/Missing hours/.test(JSON.stringify((await manager.get('/api/search?q=Missing')).body)), false);
+});
+
+test('Ask HR delivers by email when the sending mailbox is configured, then deletes the content', async () => {
+  const { makeHrRelay } = require('../server/hr-relay');
+  const sent = [];
+  const fakeFetch = async (url, opts) => {
+    if (url.includes('oauth2')) return { ok: true, json: async () => ({ access_token: 't', expires_in: 3600 }) };
+    sent.push(JSON.parse(opts.body).raw);
+    return { ok: true, json: async () => ({}) };
+  };
+  const relay = makeHrRelay(p.db, { env: { SCP_MAIL_CLIENT_ID: 'a', SCP_MAIL_CLIENT_SECRET: 'b', SCP_MAIL_REFRESH_TOKEN: 'c', SCP_MAIL_FROM: 'portal@example.com' }, fetchImpl: fakeFetch, log: { error() {} } });
+  const made = await stylist.post('/api/hr/inquiries', { subject: 'Benefits question', body: 'When can I enrol?' });
+  const r = await relay.flush();
+  assert.ok(r.sent >= 1);
+  const mime = Buffer.from(sent[sent.length - 1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+  assert.match(mime, /To: HR@scsalons\.com/);
+  assert.equal(p.db.prepare('SELECT COUNT(*) n FROM hr_outbox WHERE submission_id = ?').get(made.body.submission.id).n, 0);
+  assert.equal(p.db.prepare('SELECT delivery FROM hr_submissions WHERE id = ?').get(made.body.submission.id).delivery, 'email');
 });
 
 test('resources, acknowledgements and the to-do list', async () => {

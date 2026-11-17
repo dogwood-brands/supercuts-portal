@@ -1,1 +1,10 @@
 @import url("/css/pages/modules.css");
+
+/* v1.1 who ticked each item */
+.checklist-who {
+  display: block;
+  margin-top: 2px;
+}
+.checklist-who.is-open {
+  color: var(--warn);
+}

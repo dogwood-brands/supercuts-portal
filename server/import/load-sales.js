@@ -30,22 +30,26 @@ const removedSample = db.prepare("DELETE FROM kpi_daily WHERE source = 'sample'"
 let goals = 0;
 if (fs.existsSync(TARGETS)) {
   const salons = new Map(db.prepare('SELECT id, salon_number FROM salons').all().map((s) => [String(s.salon_number), s.id]));
-  const upsert = db.prepare(`INSERT INTO kpi_goals (salon_id, period, sales_goal_c, run_rate_c) VALUES (?, ?, ?, ?)
-    ON CONFLICT(salon_id, period) DO UPDATE SET sales_goal_c = excluded.sales_goal_c, run_rate_c = excluded.run_rate_c`);
+  // A goal typed in by leadership (goal_source 'manual') keeps its dollar figure; run-rate and haircuts still refresh.
+  const upsert = db.prepare(`INSERT INTO kpi_goals (salon_id, period, sales_goal_c, run_rate_c, haircut_goal, haircuts_rr, haircuts_ly) VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(salon_id, period) DO UPDATE SET
+      sales_goal_c = CASE WHEN kpi_goals.goal_source = 'manual' THEN kpi_goals.sales_goal_c ELSE excluded.sales_goal_c END,
+      run_rate_c = excluded.run_rate_c, haircut_goal = excluded.haircut_goal, haircuts_rr = excluded.haircuts_rr, haircuts_ly = excluded.haircuts_ly`);
+  const int = (x) => { const n = Number(x); return String(x ?? '').trim() !== '' && Number.isFinite(n) && n > 0 ? Math.round(n) : null; };
   db.transaction(() => {
     for (const r of parseCsvObjects(fs.readFileSync(TARGETS, 'utf8')).records) {
       const id = salons.get(String(r.salon_number).trim());
       const dollars = Number(r.target_dollars);
       const rr = Number(r.run_rate_dollars);
       if (!id || !/^\d{4}-\d{2}$/.test(r.period) || !Number.isFinite(dollars) || dollars <= 0) continue;
-      upsert.run(id, r.period, Math.round(dollars * 100), Number.isFinite(rr) && rr > 0 ? Math.round(rr * 100) : null);
+      upsert.run(id, r.period, Math.round(dollars * 100), Number.isFinite(rr) && rr > 0 ? Math.round(rr * 100) : null, int(r.haircut_target), int(r.haircuts_rr), int(r.haircuts_ly));
       goals += 1;
     }
   })();
 }
 // The reports carry a sales target only. Product % and sales-per-hour goals were sample values; clear them
 // so those measures are compared with the company median instead of an invented goal.
-db.prepare('UPDATE kpi_goals SET product_pct_goal = NULL, srph_goal_c = NULL').run();
+db.prepare("UPDATE kpi_goals SET product_pct_goal = NULL, srph_goal_c = NULL WHERE goal_source != 'manual'").run();
 // The reports are by salon, not by person. Remove any sample per-stylist figures.
 const scaled = db.prepare('DELETE FROM stylist_daily').run().changes;
 

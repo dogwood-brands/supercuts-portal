@@ -12,7 +12,7 @@ const SECTIONS = [
   { key: 'policies', label: 'Policies', icon: 'shield', blurb: 'The rules we all work by. Some need your sign-off.' },
   { key: 'hr', label: 'HR and handbook', icon: 'briefcase', blurb: 'The handbook, benefits and getting started.' },
 ];
-const SECTION_LABEL = { ...Object.fromEntries(SECTIONS.map((s) => [s.key, s.label])), products: 'Products' };
+const SECTION_LABEL = { ...Object.fromEntries(SECTIONS.map((s) => [s.key, s.label])), products: 'Products and shelf' };
 const SECTION_ICON = { ...Object.fromEntries(SECTIONS.map((s) => [s.key, s.icon])), products: 'bottle' };
 
 function ackFlag(r) {
@@ -69,7 +69,7 @@ function listView(ctx) {
   });
   const search = searchBox('Search these guides', (v) => { q = v; mount(body, view()); });
   return h('div', null,
-    ui.pageHeader({ eyebrow: 'Standards and training', title: 'Brand standards', sub: 'One way of doing things, written down. If a guide and what you were told disagree, the guide wins. Tell your manager so it can be fixed.' }),
+    ui.pageHeader({ eyebrow: 'Excellence', title: 'Brand standards', sub: 'One way of doing things, written down. If a guide and what you were told disagree, the guide wins. Tell your manager so it can be fixed.' }),
     ui.tabs(SECTIONS.map((s) => ({ key: s.key, label: s.label })), section, (k) => { section = k; q = ''; search.value = ''; load(); }),
     h('div', { class: 'toolbar' }, search),
     blurb,

@@ -591,18 +591,12 @@ function seedSample(db, { seed = 20261111, passwordFor = () => null, log = () =>
     }
     summary.tickets = nTickets;
 
-    // ---- HR inquiries (private: authors are invented stylists, replies come from the demo HR login) ----
-    const insHr = db.prepare('INSERT INTO hr_inquiries (author_id, category, subject, body, status, assignee_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)');
-    const insHrMsg = db.prepare('INSERT INTO hr_messages (inquiry_id, author_id, body, created_at) VALUES (?,?,?,?)');
-    const hrUser = demo['demo.hr'] || uid('samantha');
-    HR_INQUIRIES.forEach(([category, subject, body], i) => {
+    // ---- Ask HR (v1.1): the portal keeps who / when only, never message content ----
+    const insSub = db.prepare('INSERT INTO hr_submissions (author_id, created_at, acknowledged_at, delivered_at, delivery) VALUES (?,?,?,?,?)');
+    HR_INQUIRIES.forEach((_, i) => {
       const author = i === 0 && mdr ? team.get(mdr.id).stylists[0] : rng.pick(rng.pick(salons.map((s) => team.get(s.id).stylists)));
-      const age = rng.int(1, 14);
-      const created = iso(age, rng.int(9, 16));
-      const answered = i % 3 !== 2;
-      const replyAt = new Date(Math.min(nowMs, Date.parse(created) + rng.int(2, 30) * 3600000)).toISOString();
-      const id = Number(insHr.run(author.id, category, subject, body, answered ? (i % 2 ? 'resolved' : 'in_progress') : 'open', answered ? hrUser : null, created, answered ? replyAt : created).lastInsertRowid);
-      if (answered) insHrMsg.run(id, hrUser, 'Thanks for reaching out. I am looking into this and will have an answer for you within two business days. If anything is urgent in the meantime, reply here.', replyAt);
+      const created = iso(rng.int(1, 14), rng.int(9, 16));
+      insSub.run(author.id, created, created, created, 'manual');
     });
 
     // ---- acknowledgements and a few notifications for the preview logins ----------

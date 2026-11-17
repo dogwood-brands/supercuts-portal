@@ -3,7 +3,7 @@
 // The app shell is network-first with a cached fallback, so a new release shows up on the next load
 // and the app still opens with a weak signal. Fonts and media are cache-first.
 
-const VERSION = 'scp-v1-4';
+const VERSION = 'scp-v1-1-0';
 const SHELL = ['/', '/css/tokens.css', '/css/base.css', '/css/components.css', '/css/shell.css', '/js/app.js',
   '/fonts/red-hat-display.woff2', '/fonts/red-hat-text.woff2'];
 

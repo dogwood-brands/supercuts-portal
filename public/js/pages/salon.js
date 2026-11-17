@@ -133,6 +133,12 @@ function heroKpi(d) {
         ui.icon('clock', 14),
         h('span', null, 'From the daily sales and hours reports. ', loadedNote(d.refresh), '. ', h('b', null, refreshNote(d.refresh)), '.')) : null),
     h('div', { class: 'salon-hero-minis' },
+      d.haircuts && d.haircuts.vs_ly_pct !== null && d.haircuts.vs_ly_pct !== undefined
+        ? h('div', { class: 'salon-hero-mini', title: 'This month\u2019s haircut run-rate from the DSR against last year\u2019s month-end haircuts. Salon total, not one stylist.' },
+          h('div', { class: 't-eyebrow' }, 'Salon haircuts vs last year'),
+          h('div', { class: 'salon-hero-mini-val t-num' }, `${d.haircuts.vs_ly_pct > 0 ? '+' : ''}${pct(d.haircuts.vs_ly_pct)}`),
+          h('div', { class: 't-xs t-muted' }, `Pace ${num(d.haircuts.run_rate)} · last year ${num(d.haircuts.last_year)}`))
+        : null,
       mini('Yesterday', money(k.yesterday?.net_sales_c)),
       mini('Guests', num(k.mtd?.guests), k.wow?.guests_pct),
       mini('Average ticket', money(k.mtd?.atv_c, { cents: true }), k.wow?.atv_pct),
@@ -162,11 +168,12 @@ function rankStrip(d) {
     h('div', { class: 't-eyebrow' }, label),
     h('div', { class: 'rank-val t-num' }, value),
     sub ? h('div', { class: 't-xs t-muted' }, sub) : null);
+  // v1.1: rank is total net revenue this month (not progress to goal), shown company, state and district.
   return h('section', { class: 'card rank-strip' },
-    cell('Score', r.score !== null && r.score !== undefined ? Number(r.score).toFixed(1) : '–', 'pace, sales per hour, product, checklists'),
-    cell('District', ordinal(r.district), d.salon.district || null),
-    cell('Market', ordinal(r.market), d.salon.market || null),
     cell('Company', ordinal(r.company), r.of_company ? `of ${r.of_company} salons` : null),
+    cell(r.state_code ? `In ${r.state_code}` : 'State', ordinal(r.state), r.of_state ? `of ${r.of_state} salons` : null),
+    cell('District', ordinal(r.district), r.of_district ? `of ${r.of_district} · ${d.salon.district || ''}`.replace(/ · $/, '') : d.salon.district || null),
+    cell('Ranked by', 'Net revenue', 'month to date'),
     h('a', { class: 't-link t-sm rank-link', href: '#/scoreboard' }, 'See the scoreboard'));
 }
 
@@ -334,6 +341,23 @@ function teamBlock(d) {
       : h('div', { class: 'card' }, ui.empty({ icon: 'users', title: 'No team members listed yet' })));
 }
 
+/** The team's latest work photos (v1.1). Each stylist keeps up to 10 on their profile. */
+function photosBlock(d) {
+  const host = h('section', { class: 'salon-section', hidden: true });
+  api.get(`/salons/${d.salon.id}/photos`).then((r) => {
+    const items = r.items || [];
+    if (!items.length) return;
+    mount(host, [
+      h('div', { class: 'row row-between salon-section-head' }, h('h2', null, 'Recent work'), h('span', { class: 't-sm t-muted' }, 'From the team\u2019s photo albums')),
+      h('div', { class: 'photo-grid' }, items.slice(0, 8).map((p) => h('a', { class: 'photo-tile', href: `#/people/${p.user?.id}` },
+        h('img', { src: p.url, alt: p.caption || `Work by ${p.user?.name || 'a stylist'}`, loading: 'lazy' }),
+        h('span', { class: 'photo-tile-cap' }, h('b', null, p.user?.name || ''), ` · ${dateShort(p.created_at)}`)))),
+    ]);
+    host.hidden = false;
+  }).catch(() => {});
+  return host;
+}
+
 function accordions(d) {
   const k = d.kpis;
   if (!k) return null;
@@ -406,9 +430,8 @@ async function detail(ctx, id) {
         s.phone ? h('a', { href: `tel:${String(s.phone).replace(/[^\d+]/g, '')}` }, ui.icon('phone', 15), h('span', null, s.phone)) : null,
         s.shopping_center ? h('span', null, ui.icon('building', 15), h('span', null, s.shopping_center)) : null),
       h('div', { class: 'salon-head-tags' },
-        s.market ? ui.badge(s.market) : null,
-        s.district ? ui.badge(`District: ${s.district}`) : null,
-        s.entity && ctx.can('kpi.company') ? ui.badge(s.entity) : null)),
+        s.entity_name ? ui.badge(s.entity_name) : null,
+        s.district_leader ? ui.badge(`District leader: ${s.district_leader.name}`) : s.district ? ui.badge(`District: ${s.district}`) : null)),
     h('div', { class: 'salon-head-side' },
       h('div', null,
         h('div', { class: 't-eyebrow' }, 'Salon manager'),
@@ -420,7 +443,7 @@ async function detail(ctx, id) {
 
   const blocks = [header];
   if (d.kpis) {
-    blocks.push(heroKpi(d), boxesBlock(d.boxes), rankStrip(d), alertsBlock(d, ctx), dsrBlock(d), stylistBlock(d, ctx), teamBlock(d), accordions(d));
+    blocks.push(heroKpi(d), boxesBlock(d.boxes), rankStrip(d), alertsBlock(d, ctx), dsrBlock(d), stylistBlock(d, ctx), teamBlock(d), photosBlock(d), accordions(d));
   } else {
     blocks.push(
       h('section', { class: 'card salon-public' },
@@ -428,7 +451,7 @@ async function detail(ctx, id) {
         h('div', { class: 'grow' },
           h('h2', null, s.pace_pct >= 100 ? 'On pace this month' : 'Chasing goal this month'),
           h('p', { class: 't-muted' }, 'Detailed sales numbers are shared with this salon’s own team and its leaders. Everyone can see pace and rank.'))),
-      rankStrip(d), teamBlock(d));
+      rankStrip(d), teamBlock(d), photosBlock(d));
   }
   return h('div', { class: 'salon stack-lg' }, blocks.filter(Boolean));
 }

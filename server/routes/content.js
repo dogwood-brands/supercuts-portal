@@ -3,7 +3,7 @@ const express = require('express');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
-const { ROLES, HOME_OFFICE, isManagerPlus } = require('../rbac');
+const { ROLES, HOME_OFFICE, isManagerPlus, can } = require('../rbac');
 const { v, bad, notFound, idParam, nowIso, todayLocal, HttpError } = require('../util');
 const { USER_SELECT, publicUser } = require('../shape');
 
@@ -18,7 +18,16 @@ function sniffImage(buf) {
   return null;
 }
 const MIME_EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
-const EXT_MIME = { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
+const EXT_MIME = { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp', mp4: 'video/mp4', webm: 'video/webm' };
+const VIDEO_MIME_EXT = { 'video/mp4': 'mp4', 'video/quicktime': 'mp4', 'video/webm': 'webm' };
+/** MP4 / MOV carry 'ftyp' at byte 4; WebM starts with the EBML magic. */
+function sniffVideo(buf) {
+  if (!Buffer.isBuffer(buf) || buf.length < 12) return null;
+  if (buf.subarray(4, 8).toString('latin1') === 'ftyp') return 'mp4';
+  if (buf.subarray(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3]))) return 'webm';
+  return null;
+}
+const PHOTO_LIMIT = 10;
 
 module.exports = (ctx) => {
   const { db, shapes } = ctx;
@@ -27,10 +36,13 @@ module.exports = (ctx) => {
   // ---- promos -------------------------------------------------------------
   const promoShape = (p, full) => ({
     id: p.id, title: p.title, summary: p.summary, image_url: p.image_url, starts_on: p.starts_on, ends_on: p.ends_on, tag: p.tag, audience: p.audience,
+    video_url: p.video_url || null, video_poster_url: p.video_poster_url || null,
     ...(full ? { body: p.body } : {}),
   });
   r.get('/promos', (req, res) => {
     const status = v.oneOf(req.query.status || 'active', 'status', ['active', 'upcoming', 'past']);
+    // Ended promos are not shown to the field (v1.1): it invites requests to bring old offers back.
+    if (status === 'past' && !can(req.user, 'admin.content')) return res.json({ items: [] });
     const today = todayLocal();
     const cond = {
       active: "(starts_on IS NULL OR starts_on <= ?) AND (ends_on IS NULL OR ends_on >= ?)",
@@ -43,6 +55,7 @@ module.exports = (ctx) => {
   r.get('/promos/:id', (req, res) => {
     const p = db.prepare("SELECT * FROM promos WHERE id = ? AND status = 'published'").get(idParam(req));
     if (!p) throw notFound('We could not find that promotion.');
+    if (p.ends_on && p.ends_on < todayLocal() && !can(req.user, 'admin.content')) throw notFound('That promotion has ended.');
     res.json({ promo: promoShape(p, true) });
   });
 
@@ -59,36 +72,76 @@ module.exports = (ctx) => {
     res.json({ views: db.prepare('SELECT views FROM videos WHERE id = ?').get(idParam(req)).views });
   });
 
-  // ---- directory ----------------------------------------------------------
+  // ---- directory (v1.1) ---------------------------------------------------
+  // No list of every stylist (it would go stale as people join and leave). Three groups instead:
+  // portfolio leadership (people flagged directory_listed), district leaders, and every salon, A to Z
+  // by state, with its address, phone, email and manager. Communication goes through leaders and salons.
   r.get('/directory', (req, res) => {
-    const q = v.str(req.query.q, 'Search', { max: 60, required: false });
-    const role = v.oneOf(req.query.role, 'role', ROLES, { required: false });
-    const salonId = v.int(req.query.salon_id, 'salon_id', { min: 1, required: false });
-    const marketId = v.int(req.query.market_id, 'market_id', { min: 1, required: false });
-    const where = ["u.status = 'active'"];
-    const params = [];
-    if (q) { where.push("((u.first_name || ' ' || u.last_name) LIKE ? ESCAPE '\\' OR u.title LIKE ? ESCAPE '\\' OR s.name LIKE ? ESCAPE '\\')"); params.push(likeArg(q), likeArg(q), likeArg(q)); }
-    if (role) { where.push('u.role = ?'); params.push(role); }
-    if (salonId) { where.push('u.salon_id = ?'); params.push(salonId); }
-    if (marketId) { where.push('s.market_id = ?'); params.push(marketId); }
-    const rows = db.prepare(`${USER_SELECT} WHERE ${where.join(' AND ')}
-      ORDER BY CASE u.role WHEN 'executive' THEN 0 WHEN 'admin' THEN 1 WHEN 'hr' THEN 2 WHEN 'district_leader' THEN 3 WHEN 'salon_manager' THEN 4 ELSE 5 END, u.first_name, u.last_name LIMIT 400`).all(...params);
-    // Contact details: managers and above see everyone's; stylists see home-office and field leadership contacts only.
-    const wide = isManagerPlus(req.user);
-    const people = rows.map((row) => {
-      const contact = wide || HOME_OFFICE.includes(row.role) || row.role === 'district_leader';
-      return { ...publicUser(row), ...(contact ? { phone: row.phone || null, email: row.email || null } : {}) };
+    const q = (v.str(req.query.q, 'Search', { max: 60, required: false }) || '').toLowerCase();
+    const contactOf = (row) => ({ ...publicUser(row), phone: row.phone || null, email: row.email || null });
+    const leadership = db.prepare(`${USER_SELECT} WHERE u.status = 'active' AND u.directory_listed = 1 ORDER BY u.last_name, u.first_name`).all().map(contactOf);
+    const leaderRows = db.prepare(`${USER_SELECT} JOIN districts d ON d.leader_user_id = u.id WHERE u.status = 'active' ORDER BY u.first_name, u.last_name`).all();
+    const districtOf = new Map(db.prepare('SELECT id, name, leader_user_id FROM districts').all().map((d) => [d.leader_user_id, d]));
+    const salonCount = new Map(db.prepare("SELECT district_id, COUNT(*) n FROM salons WHERE status = 'active' GROUP BY district_id").all().map((x) => [x.district_id, x.n]));
+    const districtLeaders = [...new Map(leaderRows.map((r0) => [r0.id, r0])).values()].map((row) => {
+      const d = districtOf.get(row.id);
+      return { ...contactOf(row), district: d ? { id: d.id, name: d.name, salons: salonCount.get(d.id) || 0 } : null };
     });
-    const sWhere = ["s.status = 'active'"];
-    const sParams = [];
-    if (q) { sWhere.push("(s.name LIKE ? ESCAPE '\\' OR s.city LIKE ? ESCAPE '\\' OR s.salon_number LIKE ? ESCAPE '\\')"); sParams.push(likeArg(q), likeArg(q), likeArg(q)); }
-    if (salonId) { sWhere.push('s.id = ?'); sParams.push(salonId); }
-    if (marketId) { sWhere.push('s.market_id = ?'); sParams.push(marketId); }
-    const salons = role ? [] : db.prepare(`${ctx.SALON_SQL} WHERE ${sWhere.join(' AND ')} ORDER BY s.name`).all(...sParams);
+    const rows = db.prepare(`${ctx.SALON_SQL} WHERE s.status = 'active' ORDER BY s.state, s.name`).all();
+    const cards = ctx.salonCards(rows, req.user);
+    const salons = rows.map((s0, i) => ({
+      ...cards[i], address: s0.address, zip: s0.zip, phone: s0.phone || null, email: s0.email || null, shopping_center: s0.shopping_center || null,
+    }));
+    const match = (...xs) => !q || xs.filter(Boolean).join(' ').toLowerCase().includes(q);
+    const STATE = { CA: 'California', NV: 'Nevada', AZ: 'Arizona' };
+    const byState = new Map();
+    for (const s0 of salons.filter((x) => match(x.name, x.city, x.salon_number, x.manager?.name, x.shopping_center))) {
+      (byState.get(s0.state) || byState.set(s0.state, []).get(s0.state)).push(s0);
+    }
     res.json({
-      people, salons: ctx.salonCards(salons, req.user),
-      markets: db.prepare('SELECT id, name, state FROM markets ORDER BY name').all(),
+      leadership: leadership.filter((p) => match(p.name, p.title)),
+      district_leaders: districtLeaders.filter((p) => match(p.name, p.title, p.district?.name)),
+      states: [...byState.entries()].sort((x, y) => (STATE[x[0]] || x[0]).localeCompare(STATE[y[0]] || y[0]))
+        .map(([code, list]) => ({ code, name: STATE[code] || code, salons: list.sort((x, y) => x.name.localeCompare(y.name)) })),
     });
+  });
+
+  // ---- work photos (v1.1) -------------------------------------------------
+  // Each person shows up to 10 photos of their work. Adding an eleventh means deleting one first.
+  const photoShape = (p, users) => ({ id: p.id, url: p.url, caption: p.caption || null, created_at: p.created_at, user: users.get(p.user_id) || null });
+  r.get('/people/:id/photos', (req, res) => {
+    const id = idParam(req);
+    const rows = db.prepare('SELECT * FROM work_photos WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT ?').all(id, PHOTO_LIMIT);
+    const users = shapes.usersByIds([id]);
+    res.json({ items: rows.map((p) => photoShape(p, users)), limit: PHOTO_LIMIT, can_add: id === req.user.id });
+  });
+  r.get('/salons/:id/photos', (req, res) => {
+    const id = idParam(req);
+    const rows = db.prepare(`SELECT w.* FROM work_photos w JOIN users u ON u.id = w.user_id
+      WHERE u.salon_id = ? AND u.status = 'active' ORDER BY w.created_at DESC, w.id DESC LIMIT 12`).all(id);
+    const users = shapes.usersByIds(rows.map((p) => p.user_id));
+    res.json({ items: rows.map((p) => photoShape(p, users)) });
+  });
+  r.post('/me/photos', (req, res) => {
+    const b = req.body || {};
+    const url = v.url(b.url, 'Photo', { required: true });
+    if (!/^\/uploads\/[a-f0-9]{32}\.(jpg|png|webp)$/.test(url)) throw bad('Upload the photo first, then add it to your album.');
+    const caption = v.str(b.caption, 'Caption', { max: 140, required: false });
+    const n = db.prepare('SELECT COUNT(*) n FROM work_photos WHERE user_id = ?').get(req.user.id).n;
+    if (n >= PHOTO_LIMIT) throw new HttpError(409, 'album_full', `Your album holds ${PHOTO_LIMIT} photos. Delete one to add a new one.`);
+    const info = db.prepare('INSERT INTO work_photos (user_id, url, caption, created_at) VALUES (?,?,?,?)').run(req.user.id, url, caption || null, nowIso());
+    ctx.audit(req, 'photo.added', 'work_photo', Number(info.lastInsertRowid));
+    const row = db.prepare('SELECT * FROM work_photos WHERE id = ?').get(Number(info.lastInsertRowid));
+    res.json({ photo: photoShape(row, shapes.usersByIds([req.user.id])) });
+  });
+  r.delete('/photos/:id', (req, res) => {
+    const p = db.prepare('SELECT * FROM work_photos WHERE id = ?').get(idParam(req));
+    if (!p) throw notFound('We could not find that photo.');
+    // Your own photo, or a moderator removing one.
+    if (p.user_id !== req.user.id && !can(req.user, 'moderate')) throw notFound('We could not find that photo.');
+    db.prepare('DELETE FROM work_photos WHERE id = ?').run(p.id);
+    ctx.audit(req, 'photo.deleted', 'work_photo', p.id, { owner: p.user_id });
+    res.json({ ok: true });
   });
 
   r.get('/people/:id', (req, res) => {
@@ -166,7 +219,22 @@ module.exports = (ctx) => {
     res.json({ url: `/uploads/${name}` });
   });
 
+  // Promo explainer videos (v1.1): content admins only, MP4 / MOV / WebM up to 200 MB.
+  const rawVideo = express.raw({ type: Object.keys(VIDEO_MIME_EXT), limit: '200mb' });
+  r.put('/uploads/video', (req, res, next) => (can(req.user, 'admin.content') ? next() : next(new HttpError(403, 'forbidden', 'Videos are added by the home office.'))), rawVideo, (req, res) => {
+    const claimed = VIDEO_MIME_EXT[String(req.get('content-type') || '').split(';')[0].trim().toLowerCase()];
+    if (!claimed) throw new HttpError(400, 'unsupported_type', 'Videos must be MP4, MOV or WebM.');
+    const actual = sniffVideo(req.body);
+    if (!actual) throw new HttpError(400, 'unsupported_type', 'That file does not look like an MP4, MOV or WebM video.');
+    const name = `${crypto.randomBytes(16).toString('hex')}.${actual}`;
+    fs.mkdirSync(ctx.uploadsDir, { recursive: true });
+    fs.writeFileSync(path.join(ctx.uploadsDir, name), req.body, { mode: 0o640 });
+    ctx.audit(req, 'upload.video', 'upload', null, { name, bytes: req.body.length });
+    res.json({ url: `/uploads/${name}` });
+  });
+
   return r;
 };
 module.exports.sniffImage = sniffImage;
 module.exports.EXT_MIME = EXT_MIME;
+module.exports.sniffVideo = sniffVideo;

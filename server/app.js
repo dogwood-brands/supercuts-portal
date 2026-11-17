@@ -16,8 +16,9 @@ const { EXT_MIME } = require('./routes/content');
 const pkg = require('../package.json');
 
 const ROOT = path.join(__dirname, '..');
+const { makeHrRelay } = require('./hr-relay');
 
-function createApp({ db, uploadsDir = path.join(ROOT, 'data', 'uploads'), publicDir = path.join(ROOT, 'public'), config = {}, log = console } = {}) {
+function createApp({ db, uploadsDir = path.join(ROOT, 'data', 'uploads'), publicDir = path.join(ROOT, 'public'), config = {}, log = console, hrRelay = null } = {}) {
   const cfg = { loginLimit: 10, apiLimitPerMinute: 900, ...config };
   const app = express();
   app.set('trust proxy', 1); // one hop: the Cloudflare tunnel
@@ -29,6 +30,7 @@ function createApp({ db, uploadsDir = path.join(ROOT, 'data', 'uploads'), public
   const ctx = {
     db, uploadsDir, config: cfg,
     rbac: makeRbac(db), shapes: makeShapes(db), kpi: makeKpi(db),
+    hrRelay: hrRelay || makeHrRelay(db, { log }),
     /** Records a sensitive action. Never throws: an audit failure must not fail the request it describes. */
     audit(req, action, targetType = null, targetId = null, meta = null, actorId = undefined) {
       try {
@@ -97,7 +99,7 @@ function createApp({ db, uploadsDir = path.join(ROOT, 'data', 'uploads'), public
   // ---- uploads (signed-in people only) --------------------------------------
   app.get('/uploads/:name', auth.sessionMiddleware(db), (req, res, next) => {
     if (!req.user) return next(new HttpError(401, 'unauthorized', 'Please sign in to continue.'));
-    const m = /^([a-f0-9]{32})\.(jpg|png|webp)$/.exec(req.params.name);
+    const m = /^([a-f0-9]{32})\.(jpg|png|webp|mp4|webm)$/.exec(req.params.name);
     if (!m) return next(notFound());
     const file = path.join(uploadsDir, req.params.name);
     if (!fs.existsSync(file)) return next(notFound());

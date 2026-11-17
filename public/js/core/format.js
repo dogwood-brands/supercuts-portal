@@ -95,10 +95,13 @@ const ROLE_LABELS = {
 };
 export const roleLabel = (role) => ROLE_LABELS[role] || 'Team member';
 
-/** "Marina Del Rey · Westside LA" — the line shown under a name on every post, per the brief. */
+/**
+ * "Marina Del Rey #8495 · CA": the line under a name on every post. v1.1: the salon's own name and number,
+ * not a market grouping like "Westside LA" (district vs state label still to be confirmed; state for now).
+ */
 export function whereLabel(user) {
   if (!user) return '';
-  if (user.salon) return [user.salon.name, user.salon.market].filter(Boolean).join(' · ');
+  if (user.salon) return [`${user.salon.name}${user.salon.salon_number ? ` #${user.salon.salon_number}` : ''}`, user.salon.state].filter(Boolean).join(' · ');
   return user.title || roleLabel(user.role);
 }
 

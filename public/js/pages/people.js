@@ -24,6 +24,54 @@ function tenure(hireDate) {
   return `${yrs} ${yrs === 1 ? 'year' : 'years'}${mo ? `, ${mo} ${mo === 1 ? 'month' : 'months'}` : ''}`;
 }
 
+/**
+ * Work photo album (v1.1): up to 10 photos per person, each with its date and the stylist's name.
+ * Adding an eleventh means deleting one first. Moderators can remove a photo from anyone's album.
+ */
+function album(ctx, p, isMe) {
+  const host = h('section');
+  const LIMIT = 10;
+  let items = [];
+  const file = h('input', { type: 'file', accept: 'image/*', hidden: true });
+  const paint = () => {
+    const full = items.length >= LIMIT;
+    const addBtn = isMe ? ui.button(full ? 'Album full' : 'Add a photo', { variant: 'secondary', size: 'sm', icon: 'image', disabled: full, onClick: () => file.click() }) : null;
+    if (!items.length && !isMe) { mount(host, null); return; }
+    mount(host, [
+      h('div', { class: 'row row-between profile-section-head' },
+        h('h2', null, isMe ? 'My work' : `${p.first_name || 'Their'} work`),
+        h('span', { class: 'row gap-3 t-sm t-muted' }, `${items.length} of ${LIMIT}`, addBtn, file)),
+      isMe && full ? h('p', { class: 't-sm t-muted' }, 'Your album holds 10 photos. Delete one to add a new one.') : null,
+      items.length
+        ? h('div', { class: 'photo-grid' }, items.map((x) => h('figure', { class: 'photo-tile' },
+          h('img', { src: x.url, alt: x.caption || `Work by ${x.user?.name || p.name}`, loading: 'lazy' }),
+          h('figcaption', { class: 'photo-tile-cap' }, h('b', null, x.user?.name || p.name), ` · ${dateShort(x.created_at)}`, x.caption ? h('div', null, x.caption) : null),
+          isMe || ctx.can('moderate') ? h('button', {
+            class: 'icon-btn photo-tile-del', type: 'button', 'aria-label': 'Delete this photo',
+            onClick: async () => {
+              if (!(await ui.confirm({ title: 'Delete this photo?', body: 'It comes off the album and the salon page.', confirmLabel: 'Delete', tone: 'danger' }))) return;
+              try { await api.del(`/photos/${x.id}`); items = items.filter((y) => y.id !== x.id); paint(); } catch (err) { ui.toast(err.message, 'bad'); }
+            },
+          }, ui.icon('x', 16)) : null)))
+        : h('div', { class: 'card' }, ui.empty({ icon: 'image', title: 'Show your best work', body: 'Add up to 10 photos of cuts you are proud of. Your salon page shows the newest ones.' })),
+    ]);
+  };
+  file.addEventListener('change', async () => {
+    const f = file.files?.[0];
+    file.value = '';
+    if (!f) return;
+    try {
+      const up = await api.upload(f);
+      const r = await api.post('/me/photos', { url: up.url });
+      items = [r.photo, ...items];
+      paint();
+      ui.toast('Added to your album.', 'good');
+    } catch (err) { ui.toast(err.message, 'bad'); }
+  });
+  api.get(`/people/${p.id}/photos`).then((r) => { items = r.items || []; paint(); }).catch(() => mount(host, null));
+  return host;
+}
+
 export default {
   title: 'Profile',
   css: true,
@@ -36,7 +84,7 @@ export default {
 
     const facts = [
       p.salon ? h('a', { href: `#/salon/${p.salon.id}` }, ui.icon('store', 16), h('span', null, `${p.salon.name}  #${p.salon.salon_number}`)) : null,
-      p.salon?.market ? h('span', null, ui.icon('pin', 16), h('span', null, p.salon.market)) : null,
+      p.salon?.state ? h('span', null, ui.icon('pin', 16), h('span', null, p.salon.state)) : null,
       since ? h('span', null, ui.icon('clock', 16), h('span', null, `With the team ${since}`)) : null,
       p.phone ? h('a', { href: `tel:${String(p.phone).replace(/[^\d+]/g, '')}` }, ui.icon('phone', 16), h('span', null, p.phone)) : null,
       p.email ? h('a', { href: `mailto:${p.email}` }, ui.icon('mail', 16), h('span', null, p.email)) : null,
@@ -93,7 +141,7 @@ export default {
           action: isMe ? null : ui.button('Send a shout-out', { variant: 'secondary', icon: 'star', onClick: () => ctx.navigate('/') }),
         })));
 
-    return h('div', { class: 'profile stack-lg' }, hero, statsHost, recognition,
+    return h('div', { class: 'profile stack-lg' }, hero, statsHost, album(ctx, p, isMe), recognition,
       shoutouts.length >= 10 ? h('p', { class: 't-xs t-faint t-center' }, `Showing the latest ${plural(shoutouts.length, 'shout-out')}.`) : null);
   },
 };

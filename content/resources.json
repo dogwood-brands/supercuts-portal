@@ -382,5 +382,37 @@
     "sort": 32,
     "requires_ack": false,
     "updated_at": "2026-11-10T16:00:00Z"
+  },
+  {
+    "section": "hr",
+    "category": "Pay plan",
+    "title": "California pay plan",
+    "summary": "How stylist pay works in our California salons.",
+    "sort": 10,
+    "body_md": "## Your pay plan\nThe California plan includes a TSTH (total sales per total hour) bonus. HR is finalising the full plan document, with every threshold, and it will be posted here.\n\n## The numbers pay plans use\n- Total sales\n- Total sales per total hour (TSTH)\n- Supercut Plus count\n- Total haircuts\n- Wet services\n- Product sales\n- The salon's run-rate and percent to goal\n\nQuestions in the meantime: use Ask HR privately."
+  },
+  {
+    "section": "hr",
+    "category": "Pay plan",
+    "title": "Nevada pay plan",
+    "summary": "How stylist pay works in our Las Vegas salons.",
+    "sort": 11,
+    "body_md": "## Your pay plan\nThe Nevada plan uses the California plan as its base and adds a TSTH bonus tied to a minimum salon net revenue and a minimum TSTH. HR is finalising the full plan document, with every threshold, and it will be posted here.\n\n## The numbers pay plans use\n- Total sales\n- Total sales per total hour (TSTH)\n- Supercut Plus count\n- Total haircuts\n- Wet services\n- Product sales\n- The salon's run-rate and percent to goal\n\nQuestions in the meantime: use Ask HR privately."
+  },
+  {
+    "section": "hr",
+    "category": "Pay plan",
+    "title": "Arizona pay plan",
+    "summary": "How stylist pay works in our Phoenix salons.",
+    "sort": 12,
+    "body_md": "## Your pay plan\nHR is finalising the Arizona plan document, with every threshold, and it will be posted here.\n\n## The numbers pay plans use\n- Total sales\n- Total sales per total hour (TSTH)\n- Supercut Plus count\n- Total haircuts\n- Wet services\n- Product sales\n- The salon's run-rate and percent to goal\n\nQuestions in the meantime: use Ask HR privately."
+  },
+  {
+    "section": "products",
+    "category": "Shelf standards",
+    "title": "Retail shelf standards and planograms",
+    "summary": "How the retail wall is set, faced and kept full.",
+    "sort": 0,
+    "body_md": "## The standard\nEvery salon sets its retail wall to the current planogram. Products are faced forward, priced, dusted and full to the front of the shelf before the first guest of the day.\n\n## Daily\n1. Face every product forward.\n2. Fill gaps from the back stock.\n3. Wipe the shelves and the testers.\n\n## The planogram\nThe current planogram for each wall size will be posted here. Ask your district leader if you need it today."
   }
 ]

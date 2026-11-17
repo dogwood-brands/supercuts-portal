@@ -9,7 +9,8 @@ function timing(p) {
   const toStart = daysUntil(p.starts_on);
   const toEnd = daysUntil(p.ends_on);
   if (toStart !== null && toStart > 0) return { text: toStart === 1 ? 'Starts tomorrow' : `Starts in ${toStart} days`, tone: 'info' };
-  if (toEnd !== null && toEnd < 0) return { text: 'Ended', tone: 'neutral' };
+  // v1.1: no "Ended" label in the field; the server stops showing an offer once it is over.
+  if (toEnd !== null && toEnd < 0) return { text: 'Over', tone: 'neutral' };
   if (toEnd === null) return { text: 'Running now', tone: 'good' };
   if (toEnd === 0) return { text: 'Last day', tone: 'bad' };
   if (toEnd <= 7) return { text: `${toEnd} ${toEnd === 1 ? 'day' : 'days'} left`, tone: 'warn' };
@@ -24,6 +25,7 @@ function promoCard(p, i) {
       h('span', { class: 'promo-card-timing' }, ui.badge(t.text, t.tone === 'neutral' ? 'dark' : t.tone))),
     h('div', { class: 'card-pad col gap-2' },
       p.tag ? h('div', { class: 't-eyebrow' }, p.tag) : null,
+      p.video_url ? h('div', { class: 'row gap-1 t-xs t-strong promo-card-video' }, ui.icon('play', 14), 'Watch how it works') : null,
       h('h3', { class: 't-lg' }, p.title),
       p.summary ? h('p', { class: 't-sm t-muted t-clamp-3' }, p.summary) : null,
       h('div', { class: 'row gap-2 t-xs t-muted promo-card-dates' }, ui.icon('calendar', 14), dateRange(p.starts_on, p.ends_on))));
@@ -36,7 +38,6 @@ function listView() {
   const EMPTY = {
     active: ['No promos are running right now', 'When the next offer starts it will show up here with everything you need to explain it.'],
     upcoming: ['Nothing scheduled yet', 'Upcoming offers appear here ahead of their start date so the team can get ready.'],
-    past: ['No past promos', 'Offers that have ended are kept here for reference.'],
   };
   const reload = region(host, async () => {
     const { items = [] } = await api.get('/promos', { status });
@@ -44,9 +45,22 @@ function listView() {
     return h('div', { class: 'grid promo-grid' }, items.map(promoCard));
   });
   return h('div', null,
-    ui.pageHeader({ eyebrow: 'Sell', title: 'Promos', sub: 'Every current offer, with the dates, how to ring it and what to say at the chair.' }),
-    ui.tabs([{ key: 'active', label: 'Running now' }, { key: 'upcoming', label: 'Coming up' }, { key: 'past', label: 'Ended' }], status, (k) => { status = k; reload(); }),
+    ui.pageHeader({ eyebrow: 'Sell Offers', title: 'Company-wide promos', sub: 'Every offer running across the company, with the days left, a short video on how it works, and what to say at the chair.' }),
+    ui.tabs([{ key: 'active', label: 'Running now' }, { key: 'upcoming', label: 'Coming up' }], status, (k) => { status = k; reload(); }),
     host);
+}
+
+/** A short explainer video for the offer, uploaded by the home office (v1.1). */
+function promoVideo(p) {
+  // A YouTube link plays through the privacy-enhanced embed; anything else is our own uploaded file.
+  const yt = /(?:youtube(?:-nocookie)?\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/.exec(p.video_url || '');
+  if (yt) {
+    return ui.card({ title: 'Watch how it works', flush: true }, h('div', { class: 'promo-video' },
+      h('iframe', { src: `https://www.youtube-nocookie.com/embed/${yt[1]}`, title: `${p.title} video`, allow: 'fullscreen; picture-in-picture', allowFullscreen: true, referrerPolicy: 'strict-origin-when-cross-origin' })));
+  }
+  const v = h('video', { class: 'player', src: p.video_url, controls: true, playsInline: true, preload: 'metadata', poster: p.video_poster_url || p.image_url || null });
+  v.setAttribute('playsinline', '');
+  return ui.card({ title: 'Watch how it works', flush: true }, h('div', { class: 'promo-video' }, v));
 }
 
 function detailView(id) {
@@ -59,7 +73,7 @@ function detailView(id) {
     const elapsed = total && toEnd !== null ? Math.max(0, Math.min(100, ((total - toEnd) / total) * 100)) : null;
     const running = t.tone !== 'info' && t.tone !== 'neutral';
     return h('article', { class: 'stack-lg' },
-      backLink('#/promos', 'All promos'),
+      backLink('#/promos', 'Company-wide promos'),
       h('div', { class: 'promo-hero' },
         cover(p.image_url, { iconName: 'tag' }),
         h('div', { class: 'promo-hero-copy' },
@@ -67,11 +81,14 @@ function detailView(id) {
           h('h1', null, p.title),
           p.summary ? h('p', { class: 't-lg' }, p.summary) : null)),
       h('div', { class: 'layout-rail' },
-        ui.card({}, p.body ? markdown(p.body) : h('p', { class: 't-muted' }, 'Details for this offer have not been added yet. Ask your district leader if you need them today.')),
+        h('div', { class: 'stack' },
+          p.video_url ? promoVideo(p) : null,
+          ui.card({}, p.body ? markdown(p.body) : h('p', { class: 't-muted' }, 'Details for this offer have not been added yet. Ask your district leader if you need them today.'))),
         h('aside', { class: 'rail stack' },
           ui.card({ title: 'Dates' },
             h('div', { class: 'col gap-4' },
               h('div', { class: 'row gap-3' }, ui.icon('calendar', 18), h('span', { class: 't-strong' }, dateRange(p.starts_on, p.ends_on) || 'No end date set')),
+              running && toEnd !== null ? h('div', { class: 'row gap-3' }, ui.icon('clock', 18), h('span', { class: 't-strong' }, toEnd === 0 ? 'Last day today' : `${toEnd} ${toEnd === 1 ? 'day' : 'days'} remaining`)) : null,
               running && elapsed !== null ? ui.progress(elapsed, { tone: toEnd <= 7 ? 'warn' : 'good', label: 'Through the offer' }) : null,
               h('p', { class: 't-sm t-muted' }, running
                 ? 'Mention it to every guest it fits. A quick, friendly offer at the chair works better than a sign on the door.'

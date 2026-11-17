@@ -37,6 +37,31 @@ function imageField(f, value) {
   return field;
 }
 
+/** A video link with an Upload button (MP4, MOV or WebM up to 200 MB), or a YouTube link. */
+function videoField(f, value) {
+  const field = ui.field({ label: f.label, name: f.name, value: value || '', placeholder: 'https://youtu.be/... or upload a file', hint: f.hint || 'Upload a short video, or paste a YouTube link.' });
+  const file = h('input', { type: 'file', accept: 'video/mp4,video/quicktime,video/webm', class: 'sr-only' });
+  const btn = ui.button('Upload video', { variant: 'secondary', size: 'sm', icon: 'upload', onClick: () => file.click() });
+  file.addEventListener('change', async () => {
+    const f0 = file.files[0];
+    if (!f0) return;
+    if (f0.size > 200 * 1024 * 1024) { ui.toast('Keep videos under 200 MB. A one-minute phone video is usually 50 to 120 MB.', 'bad'); file.value = ''; return; }
+    btn.classList.add('is-busy');
+    try {
+      const res = await api.uploadVideo(f0);
+      field.input.value = res.url;
+      ui.toast('Video uploaded. Save to publish it.', 'good');
+    } catch (err) {
+      ui.toast(err.message, 'bad');
+    } finally {
+      btn.classList.remove('is-busy');
+      file.value = '';
+    }
+  });
+  field.insertBefore(h('div', { class: 'row gap-2' }, h('div', { class: 'grow' }, field.input), btn, file), field.children[1] || null);
+  return field;
+}
+
 function checkField(f, value) {
   const input = h('input', { type: 'checkbox', name: f.name, checked: !!value });
   return h('label', { class: 'checkbox check-plain' }, input, h('span', null, f.label, f.hint ? h('span', { class: 'field-hint' }, f.hint) : null));
@@ -45,6 +70,7 @@ function checkField(f, value) {
 function buildField(f, row) {
   const value = row ? (f.get ? f.get(row) : row[f.name]) : f.default;
   if (f.type === 'image') return imageField(f, value);
+  if (f.type === 'video') return videoField(f, value);
   if (f.type === 'checkbox') return checkField(f, value);
   return ui.field({ ...f, value: value ?? '', options: typeof f.options === 'function' ? f.options() : f.options });
 }

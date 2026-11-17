@@ -68,18 +68,28 @@ export default function goals() {
       const sales = cell(r.sales_goal_c === null || r.sales_goal_c === undefined ? '' : Math.round(r.sales_goal_c / 100), `Sales goal for ${r.salon_name}`);
       const prod = cell(r.product_pct_goal, `Product share goal for ${r.salon_name}`);
       const srph = cell(r.srph_goal_c === null || r.srph_goal_c === undefined ? '' : (r.srph_goal_c / 100).toFixed(2), `Service revenue per hour goal for ${r.salon_name}`);
+      const hc = (n) => (n === null || n === undefined ? '–' : Number(n).toLocaleString('en-US'));
       const row = h('tr', null,
         h('td', null, h('div', { class: 't-strong' }, r.salon_name), h('div', { class: 't-xs t-muted t-num' }, `#${r.salon_number}`)),
-        h('td', { class: 'is-right' }, sales), h('td', { class: 'is-right' }, prod), h('td', { class: 'is-right' }, srph));
+        h('td', { class: 'is-right' }, sales,
+          h('div', { class: 't-xs t-muted' }, r.goal_source === 'manual' ? h('span', null, 'Set by hand · ', h('button', { class: 't-link', type: 'button', onClick: () => revert(r) }, 'use DSR')) : r.sales_goal_c ? 'From the DSR' : '')),
+        h('td', { class: 'is-right' }, prod), h('td', { class: 'is-right' }, srph),
+        h('td', { class: 'is-right t-num t-sm' }, hc(r.haircut_goal)), h('td', { class: 'is-right t-num t-sm' }, hc(r.haircuts_rr)), h('td', { class: 'is-right t-num t-sm' }, hc(r.haircuts_ly)));
       return { id: r.salon_id, name: r.salon_name, sales, prod, srph, row };
     });
     dirty = false;
     saveBtn.disabled = true;
     paintTotal();
     return ui.card({ flush: true }, h('div', { class: 'table-wrap' }, h('table', { class: 'table goals-table' },
-      h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Salon'), h('th', { scope: 'col', class: 'is-right' }, 'Sales goal ($)'), h('th', { scope: 'col', class: 'is-right' }, 'Product share (%)'), h('th', { scope: 'col', class: 'is-right' }, 'Service $ per hour'))),
+      h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Salon'), h('th', { scope: 'col', class: 'is-right' }, 'Sales goal ($)'), h('th', { scope: 'col', class: 'is-right' }, 'Product share (%)'), h('th', { scope: 'col', class: 'is-right' }, 'Sales $ per hour'),
+        h('th', { scope: 'col', class: 'is-right' }, 'Haircut goal'), h('th', { scope: 'col', class: 'is-right' }, 'Haircut pace'), h('th', { scope: 'col', class: 'is-right' }, 'Haircuts last year'))),
       h('tbody', null, inputs.map((r) => r.row)))));
   }, { skeleton: 'table' });
+
+  async function revert(r) {
+    if (!(await ui.confirm({ title: `Use the DSR goal for ${r.salon_name}?`, body: 'The goal from the daily sales report replaces the one typed here at the next sales refresh.', confirmLabel: 'Use DSR goal' }))) return;
+    try { await api.post('/admin/goals/revert', { period, salon_id: r.salon_id }); ui.toast('Back on the DSR goal from the next refresh.', 'good'); load(); } catch (err) { ui.toast(err.message, 'bad'); }
+  }
 
   const go = async (n) => {
     if (dirty && !(await ui.confirm({ title: 'Leave without saving?', body: 'You have goal changes that are not saved yet.', confirmLabel: 'Leave', tone: 'danger' }))) return;
@@ -109,7 +119,7 @@ export default function goals() {
     h('div', { class: 'row row-between gap-3 row-wrap' },
       h('h2', null, 'Goals'),
       h('div', { class: 'row gap-2 row-wrap' }, ui.button('Copy last month', { variant: 'secondary', onClick: copyLast }), saveBtn)),
-    h('p', { class: 't-sm t-muted', style: { maxWidth: '64ch' } }, 'Monthly goals drive pace to goal, the scoreboard and the "check the boxes" tiles on every salon page. Type the numbers, then save once.'),
+    h('p', { class: 't-sm t-muted', style: { maxWidth: '64ch' } }, 'Sales goals load from the DSR twice a day. Type a different goal here and it is kept for that month, and the DSR no longer overwrites it. Goals drive pace to goal and the scorecard; salon rank is by net revenue. Haircut figures come from the DSR and are read-only.'),
     h('div', { class: 'row row-between gap-3 row-wrap' },
       h('div', { class: 'row gap-2' },
         ui.button('', { variant: 'secondary', icon: 'chevronLeft', title: 'Previous month', onClick: () => go(-1) }), label,

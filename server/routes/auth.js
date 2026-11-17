@@ -2,7 +2,7 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const auth = require('../auth');
-const { permissions } = require('../rbac');
+const { permissions, canChecklists } = require('../rbac');
 const { v, bad, unauthorized, conflict, nowIso, json, HttpError } = require('../util');
 const { publicUser } = require('../shape');
 
@@ -31,12 +31,16 @@ module.exports = (ctx) => {
       must_change_password: !!row.must_change_password,
       district: d || null,
       scope: rbac.scopeLabel(row),
-      permissions: permissions(row),
+      shift_manager: !!row.shift_manager,
+      pay_plan: row.pay_plan || null,
+      // 'checklists' is derived: shift managers and above (v1.1).
+      permissions: [...permissions(row), ...(canChecklists(row) ? ['checklists'] : [])],
     };
   }
   function publicSettings() {
     const get = (k, d) => json(db.prepare('SELECT value_json FROM settings WHERE key = ?').get(k)?.value_json, d);
-    return { company_name: get('company_name', 'SC Portal'), sample_data: !!get('sample_data', false), values: get('values', []) };
+    return { company_name: get('company_name', 'SC Portal'), sample_data: !!get('sample_data', false), values: get('values', []),
+      academy_url: get('academy_url', 'https://academy.dogwoodbrands.com'), isolved_url: get('isolved_url', null) };
   }
   ctx.meUser = meUser;
   ctx.publicSettings = publicSettings;

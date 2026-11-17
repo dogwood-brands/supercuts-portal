@@ -37,6 +37,7 @@ const SECTIONS = {
       { name: 'address', label: 'Street address', maxLength: 160 },
       [{ name: 'city', label: 'City', maxLength: 80 }, { name: 'state', label: 'State', maxLength: 2, placeholder: 'CA', set: (v) => (v ? v.toUpperCase() : null) }],
       [{ name: 'zip', label: 'ZIP', maxLength: 10 }, { name: 'phone', label: 'Phone', type: 'tel', maxLength: 30 }],
+      { name: 'email', label: 'Salon email', type: 'email', maxLength: 160, hint: 'Shown in the directory.' },
       { name: 'shopping_center', label: 'Shopping center', maxLength: 120 },
       [{ name: 'market_id', label: 'Market', type: 'select', numeric: true, options: () => withBlank('Not set', ref.markets, (x) => x.name) },
         { name: 'district_id', label: 'District', type: 'select', numeric: true, options: () => withBlank('Not set', ref.districts, (x) => x.name) }],

@@ -11,6 +11,13 @@ module.exports = (ctx) => {
   const { db, rbac, shapes, audit, notify } = ctx;
   const r = express.Router();
 
+  /**
+   * Who a person can shout out (v1.1): their own team. Stylists and managers recognise people in their
+   * own salon; district leaders, anyone in their district; the home office, anyone. Returns 'all' or salon ids.
+   */
+  const shoutReach = (user) => (HOME_OFFICE.includes(user.role) ? 'all' : rbac.scopeSalonIds(user));
+  ctx.shoutReach = shoutReach;
+
   // ---- visibility ---------------------------------------------------------
   /** SQL fragment + params: posts this user may see. Home office sees everything. */
   function visibility(user) {
@@ -123,7 +130,8 @@ module.exports = (ctx) => {
 
   r.get('/feed/sidebar', (req, res) => {
     const vis = visibility(req.user);
-    const since = new Date(Date.now() - 30 * 86400000).toISOString();
+    // Shout leaderboard: shout-outs received this month (reactions never count), top five company-wide.
+    const since = `${todayLocal().slice(0, 7)}-01T00:00:00.000Z`;
     const top = db.prepare(`SELECT t.target_id AS id, COUNT(*) n FROM shoutout_targets t JOIN posts p ON p.id = t.post_id
       WHERE t.target_type = 'user' AND p.deleted_at IS NULL AND p.created_at >= ? GROUP BY t.target_id ORDER BY n DESC, t.target_id LIMIT 5`).all(since);
     const users = shapes.usersByIds(top.map((x) => x.id));
@@ -149,6 +157,7 @@ module.exports = (ctx) => {
 
     const pinned = db.prepare(`SELECT p.* FROM posts p WHERE p.deleted_at IS NULL AND p.pinned_until > ? AND ${vis.sql} ORDER BY p.created_at DESC LIMIT 5`).all(nowIso(), ...vis.params);
     res.json({
+      shout_leaderboard: top.map((x) => ({ user: users.get(x.id), count: x.n })).filter((x) => x.user),
       top_recognized: top.map((x) => ({ user: users.get(x.id), count: x.n })).filter((x) => x.user),
       celebrations: celebrations.map((c) => ({ user: cUsers.get(c.id), kind: c.kind, label: c.label, on: c.on })).filter((c) => c.user),
       pinned: shapePosts(pinned, req.user),
@@ -158,11 +167,16 @@ module.exports = (ctx) => {
   r.get('/mentions', (req, res) => {
     const q = v.str(req.query.q, 'Search', { max: 60, required: false }) || '';
     const like = `%${q.replace(/[%_\\]/g, (m) => '\\' + m)}%`;
-    const rows = db.prepare(`SELECT id FROM users WHERE status = 'active' AND id != ?
-      AND (first_name || ' ' || last_name) LIKE ? ESCAPE '\\' ORDER BY (salon_id IS ?) DESC, first_name, last_name LIMIT 8`).all(req.user.id, like, req.user.salon_id);
+    // The shout-out picker lists only people and salons the caller can recognise (their own team).
+    const reach = shoutReach(req.user);
+    const inReach = reach === 'all' ? '' : reach.length ? `AND salon_id IN (${reach.map(() => '?').join(',')})` : 'AND 0';
+    const sReach = reach === 'all' ? '' : reach.length ? `AND id IN (${reach.map(() => '?').join(',')})` : 'AND 0';
+    const extra = reach === 'all' ? [] : reach;
+    const rows = db.prepare(`SELECT id FROM users WHERE status = 'active' AND id != ? ${inReach}
+      AND (first_name || ' ' || last_name) LIKE ? ESCAPE '\\' ORDER BY (salon_id IS ?) DESC, first_name, last_name LIMIT 8`).all(req.user.id, ...extra, like, req.user.salon_id);
     const users = shapes.usersByIds(rows.map((x) => x.id));
-    const salons = db.prepare(`SELECT id, name, salon_number FROM salons WHERE status = 'active'
-      AND (name LIKE ? ESCAPE '\\' OR salon_number LIKE ? ESCAPE '\\') ORDER BY name LIMIT 6`).all(like, like);
+    const salons = db.prepare(`SELECT id, name, salon_number FROM salons WHERE status = 'active' ${sReach}
+      AND (name LIKE ? ESCAPE '\\' OR salon_number LIKE ? ESCAPE '\\') ORDER BY name LIMIT 6`).all(...extra, like, like);
     res.json({ users: rows.map((x) => users.get(x.id)), salons });
   });
 
@@ -214,6 +228,14 @@ module.exports = (ctx) => {
         const table = { user: 'users', salon: 'salons', district: 'districts' }[tt];
         if (!db.prepare(`SELECT 1 FROM ${table} WHERE id = ?`).get(tid)) throw bad('We could not find one of the people or teams you tagged.');
         if (tt === 'user' && tid === req.user.id) throw bad('Shout-outs are for teammates. Pick someone else to recognise.');
+        if (kind === 'shoutout') {
+          const reach = shoutReach(req.user);
+          if (reach !== 'all') {
+            const salonOf = tt === 'user' ? db.prepare('SELECT salon_id FROM users WHERE id = ?').get(tid)?.salon_id : tt === 'salon' ? tid : null;
+            const ok = tt === 'district' ? rbac.userDistrictId(req.user) === tid && req.user.role === 'district_leader' : salonOf && reach.includes(salonOf);
+            if (!ok) throw bad('Shout-outs are for your own team. Pick someone you work with.');
+          }
+        }
         if (seen.has(`${tt}:${tid}`)) continue;
         seen.add(`${tt}:${tid}`);
         targets.push({ tt, tid, vk });

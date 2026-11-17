@@ -25,8 +25,14 @@ if (!db.prepare('SELECT COUNT(*) n FROM users').get().n) {
 const app = createApp({ db, uploadsDir: process.env.SCP_UPLOADS || path.join(__dirname, '..', 'data', 'uploads') });
 const server = app.listen(PORT, HOST, () => console.log(`[sc-portal] listening on http://${HOST}:${PORT}`));
 
-const purge = setInterval(() => { try { auth.purgeExpiredSessions(db); } catch (e) { console.error('[purge]', e.message); } }, 60 * 60 * 1000);
+const purge = setInterval(() => {
+  try { auth.purgeExpiredSessions(db); } catch (e) { console.error('[purge]', e.message); }
+  try { app.locals.ctx?.hrRelay.purge(); } catch (e) { console.error('[hr purge]', e.message); }
+}, 60 * 60 * 1000);
 purge.unref();
+// Ask HR: retry delivery to the HR inbox every five minutes (no-op until the sending mailbox is configured).
+const hrRetry = setInterval(() => { app.locals.ctx?.hrRelay.flush().catch((e) => console.error('[hr relay]', e.message)); }, 5 * 60 * 1000);
+hrRetry.unref();
 
 let closing = false;
 function shutdown(signal) {

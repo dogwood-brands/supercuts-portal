@@ -1,4 +1,4 @@
-# SC Portal
+# CutsHub (formerly SC Portal)
 
 SC Portal is the employee and leadership portal for the SC Entities Supercuts salons (51 active salons in California, Nevada and Arizona).
 Stylists and salon managers use it for their salon's numbers, promos, standards, training, checklists, support tickets and team recognition.

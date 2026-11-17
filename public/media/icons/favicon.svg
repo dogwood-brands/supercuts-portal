@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="SC Portal">
-  <rect width="512" height="512" rx="112" fill="#141414"/>
-  <text x="246" y="330" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="700" font-size="232" letter-spacing="-10" fill="#ffffff">SC</text>
-  <circle cx="404" cy="312" r="22" fill="#c9aa7c"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="CutsHub">
+  <rect width="512" height="512" rx="112" fill="#0b2f6b"/>
+  <text x="250" y="352" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="800" font-style="italic" font-size="300" fill="#ffffff">C</text>
+  <circle cx="378" cy="338" r="24" fill="#8fb8f5"/>
 </svg>

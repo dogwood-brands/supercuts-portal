@@ -164,7 +164,7 @@
   align-items: center;
   gap: var(--s-3);
   padding: 0 var(--s-8);
-  background: rgba(246, 245, 241, 0.86);
+  background: rgba(255, 255, 255, 0.9);
   -webkit-backdrop-filter: saturate(1.4) blur(14px);
   backdrop-filter: saturate(1.4) blur(14px);
   border-bottom: 1px solid transparent;
@@ -197,7 +197,7 @@
   border-color: var(--ink);
   box-shadow: 0 0 0 3px rgba(22, 22, 26, 0.08);
 }
-.search svg {
+.search > svg {
   position: absolute;
   left: 13px;
   top: 11px;
@@ -528,4 +528,125 @@
     gap: 0;
     border: 0;
   }
+}
+
+/* ---------- v1.1 CutsHub shell (ZM 2026-11-17) ---------- */
+/* The name is always italic. */
+.brand-name em,
+.brand-mark em {
+  font-style: italic;
+}
+.brand-mark {
+  background: var(--surface);
+  color: var(--night);
+  font-size: 17px;
+}
+.brand-name {
+  font-size: var(--fs-18);
+}
+/* Search at the bottom of the sidebar */
+.sidebar-search {
+  flex: none;
+  padding: var(--s-3) var(--s-3) 0;
+  border-top: 1px solid var(--night-2);
+}
+.sidebar-search .search {
+  flex: none;
+}
+.sidebar-search .search input {
+  background: var(--night-2);
+  border-color: var(--night-3);
+  color: var(--night-ink);
+}
+.sidebar-search .search input::placeholder {
+  color: var(--night-muted);
+}
+.sidebar-search .search input:focus {
+  border-color: var(--brand-bright);
+  box-shadow: 0 0 0 3px rgba(143, 184, 245, 0.25);
+}
+.sidebar-search .search > svg {
+  color: var(--night-muted);
+}
+/* results open upwards, over the nav, in light colours */
+.sidebar-search .search-results {
+  top: auto;
+  bottom: 46px;
+  color: var(--ink);
+  min-width: 300px;
+}
+.sidebar-foot {
+  border-top: 0;
+}
+/* Top bar: page title / greeting centre / date and time above the alerts */
+.topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+}
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-width: 0;
+}
+.topbar-hello {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-22);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  text-align: center;
+  white-space: nowrap;
+}
+.topbar-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  min-width: 0;
+}
+.topbar-clock {
+  font-size: var(--fs-12);
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.topbar-alerts {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+@media (max-width: 960px) {
+  .topbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .topbar-hello {
+    display: none;
+  }
+  .topbar-clock {
+    font-size: var(--fs-11);
+  }
+  .sidebar-search .search {
+    display: block;
+  }
+  .sidebar-search .search-results {
+    min-width: 0;
+  }
+}
+@media (max-width: 400px) {
+  .topbar-clock {
+    display: none;
+  }
+}
+
+/* the "C" mark on light surfaces (sign-in page) */
+.login-panel .brand-mark,
+.boot .brand-mark {
+  background: var(--night);
+  color: var(--surface);
+}
+.login-panel .brand-name {
+  color: var(--night);
 }

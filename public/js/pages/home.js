@@ -521,10 +521,10 @@ async function quickStats(ctx, salonDetail) {
 /** Who and where I am: the salon's photo, name, number, entity and district leader (v1.1). */
 function salonIdentity(ctx, salonDetail) {
   const { user } = ctx;
-  const head = h('div', { class: 'home-hello-text' },
+  // On a computer the greeting and the date live in the top bar (v1.1); on a phone they stay here.
+  const head = h('div', { class: 'home-hello-text only-compact' },
     h('div', { class: 't-eyebrow' }, dateLong(new Date())),
-    h('h1', null, `${greeting()}, ${user.first_name || user.name}.`),
-    user.salon ? null : h('p', { class: 't-muted' }, user.title || roleLabel(user.role)));
+    h('h1', null, `${greeting()}, ${user.first_name || user.name}.`));
   if (!user.salon) return h('header', { class: 'home-hello' }, head);
   const photo = h('div', { class: 'media home-id-photo' });
   const lines = h('dl', { class: 'home-id-lines' });

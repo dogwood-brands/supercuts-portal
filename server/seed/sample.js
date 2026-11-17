@@ -86,7 +86,7 @@ function seedContent(db, today, now, rng) {
   const values = (readContent('values.json') || DEFAULT_VALUES).filter((x) => x && x.key && x.label).map((x) => ({ key: String(x.key).slice(0, 40), label: String(x.label).slice(0, 60), ...(x.meaning ? { meaning: String(x.meaning).slice(0, 200) } : {}) }));
   const setSetting = db.prepare('INSERT INTO settings (key, value_json) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json');
   setSetting.run('values', JSON.stringify(values.length ? values : DEFAULT_VALUES));
-  setSetting.run('company_name', JSON.stringify('SC Portal'));
+  setSetting.run('company_name', JSON.stringify('CutsHub'));
   setSetting.run('sample_data', JSON.stringify(true));
   setSetting.run('academy_url', JSON.stringify('https://academy.dogwoodbrands.com'));
 

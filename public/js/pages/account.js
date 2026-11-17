@@ -98,8 +98,8 @@ function installCard() {
     }
     const ios = pwa.isIos();
     mount(body, [
-      h('p', { class: 't-muted t-sm' }, 'Put SC Portal on your home screen so it opens full screen like any other app. No app store needed.'),
-      pwa.canPrompt() ? ui.button('Install SC Portal', { variant: 'brand', icon: 'download', onClick: async () => { if (await pwa.install()) ui.toast('Installed. Look for SC Portal on your home screen.', 'good'); } }) : null,
+      h('p', { class: 't-muted t-sm' }, 'Put CutsHub on your home screen so it opens full screen like any other app. No app store needed.'),
+      pwa.canPrompt() ? ui.button('Install CutsHub', { variant: 'brand', icon: 'download', onClick: async () => { if (await pwa.install()) ui.toast('Installed. Look for CutsHub on your home screen.', 'good'); } }) : null,
       h('div', { class: 'acct-install' },
         h('div', { class: ios ? 'is-mine' : null },
           h('h4', null, 'iPhone or iPad'),

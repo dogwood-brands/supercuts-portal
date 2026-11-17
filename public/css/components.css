@@ -72,11 +72,11 @@
   pointer-events: none;
 }
 .btn-primary {
-  background: var(--ink);
+  background: var(--night);
   color: var(--surface);
 }
 .btn-primary:hover {
-  background: #000;
+  background: var(--brand);
 }
 .btn-brand {
   background: var(--brand);

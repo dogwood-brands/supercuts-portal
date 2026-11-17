@@ -29,23 +29,23 @@
   --fs-36: 2.25rem;
   --fs-48: 3rem;
 
-  /* colour: warm paper, ink, and one quiet bronze accent (no red: red reads as a competitor's brand) */
-  --paper: #f6f5f1;
+  /* colour: Supercuts deep blue and white (v1.1, ZM 2026-11-17). Blue is the one accent; no red, no green brand use. */
+  --paper: #f4f7fc;
   --surface: #ffffff;
-  --surface-2: #faf9f6;
-  --surface-3: #f1efea;
-  --ink: #16161a;
-  --ink-2: #3a3a42;
-  --muted: #6c6c76;
-  --faint: #9a9aa3;
-  --line: #e6e3dc;
-  --line-strong: #d3cfc6;
+  --surface-2: #f8fafd;
+  --surface-3: #eaf0f8;
+  --ink: #0f1b33;
+  --ink-2: #33415c;
+  --muted: #5f6b82;
+  --faint: #95a0b4;
+  --line: #dde5f0;
+  --line-strong: #c6d2e3;
 
-  --brand: #8a6a3e;
-  --brand-ink: #6b5130;
-  --brand-soft: #f5efe4;
+  --brand: #0b4aa2;
+  --brand-ink: #083a80;
+  --brand-soft: #e7effb;
   --brand-on: #ffffff;
-  --brand-bright: #c9aa7c; /* the accent on dark surfaces */
+  --brand-bright: #8fb8f5; /* the accent on dark (deep blue) surfaces */
 
   --good: #17794a;
   --good-soft: #e6f3ec;
@@ -56,11 +56,12 @@
   --info: #235a9f;
   --info-soft: #e8f0fa;
 
-  --night: #121215;
-  --night-2: #1c1c21;
-  --night-3: #2a2a31;
-  --night-ink: #f3f2ee;
-  --night-muted: #a2a2ac;
+  /* the sidebar and dark cards: deep Supercuts blue */
+  --night: #0b2f6b;
+  --night-2: #123b80;
+  --night-3: #1f4c94;
+  --night-ink: #ffffff;
+  --night-muted: #b7c8e6;
 
   /* space */
   --s-1: 4px;
@@ -94,7 +95,7 @@
 
   /* layout */
   --sidebar-w: 248px;
-  --topbar-h: 60px;
+  --topbar-h: 68px;
   --tabbar-h: 62px;
   --content-max: 1240px;
   --safe-b: env(safe-area-inset-bottom, 0px);

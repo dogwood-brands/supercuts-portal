@@ -1,10 +1,10 @@
-// SC Portal: boot, session, login, app shell and router.
+// CutsHub: boot, session, login, app shell and router.
 
 import { h, clear, mount, debounce } from './core/dom.js';
 import { api, setUnauthorizedHandler } from './core/api.js';
 import { ui } from './core/ui.js';
 import { icon } from './core/icons.js';
-import { roleLabel, whereLabel } from './core/format.js';
+import { roleLabel, whereLabel, greeting } from './core/format.js';
 import { pwa } from './core/pwa.js';
 
 const root = document.getElementById('app');
@@ -98,9 +98,9 @@ function navModel() {
 /* ---------- login ---------- */
 
 function renderLogin(message) {
-  document.title = 'Sign in · SC Portal';
+  document.title = 'Sign in · CutsHub';
   const error = h('div', { class: 'login-error', role: 'alert', hidden: !message }, message || '');
-  const username = ui.field({ label: 'Username', name: 'username', autocomplete: 'username', required: true, placeholder: 'first.last' });
+  const username = ui.field({ label: 'Username', name: 'username', autocomplete: 'username', required: true, placeholder: 'jsmith' });
   const password = ui.field({ label: 'Password', name: 'password', type: 'password', autocomplete: 'current-password', required: true });
   username.input.autocapitalize = 'none';
   username.input.spellcheck = false;
@@ -131,11 +131,11 @@ function renderLogin(message) {
     h('div', { class: 'login-panel' },
       brand(),
       h('div', { class: 'login-form' },
-        h('h1', null, 'Welcome back.'),
+        h('h1', null, 'Welcome to ', h('em', null, 'CutsHub'), '.'),
         h('p', null, 'Sign in to see your salon, your numbers and what the team is celebrating today.'),
         form,
         h('p', { class: 't-sm t-muted', style: { marginTop: 'var(--s-5)' } }, 'First time here, or locked out? Ask your salon manager or district leader for a sign-in.')),
-      h('div', { class: 'login-foot' }, `SC Entities team portal · ${new Date().getFullYear()}`)),
+      h('div', { class: 'login-foot' }, `CutsHub · SC Entities · ${new Date().getFullYear()}`)),
     h('div', { class: 'login-hero' },
       heroImg,
       h('div', { class: 'login-hero-copy' },
@@ -148,10 +148,11 @@ function renderLogin(message) {
   username.input.focus();
 }
 
+/** The name is always written in italics: *CutsHub*. */
 function brand() {
-  return h('a', { class: 'brand', href: '#/' },
-    h('span', { class: 'brand-mark' }, 'SC'),
-    h('span', { class: 'brand-name' }, 'SC Portal', h('small', null, 'Supercuts · SC Entities')));
+  return h('a', { class: 'brand', href: '#/', 'aria-label': 'CutsHub home' },
+    h('span', { class: 'brand-mark' }, h('em', null, 'C')),
+    h('span', { class: 'brand-name' }, h('em', null, 'CutsHub'), h('small', null, 'Supercuts · SC Entities')));
 }
 
 /* ---------- shell ---------- */
@@ -184,7 +185,8 @@ function buildShell() {
   ], { align: 'left' });
   userBtn.addEventListener('click', () => openUserMenu(userBtn));
 
-  const sidebar = h('aside', { class: 'sidebar' }, brand(), nav, h('div', { class: 'sidebar-foot' }, userBtn));
+  // v1.1 layout (ZM 2026-11-17): search sits at the bottom of the left-hand sidebar.
+  const sidebar = h('aside', { class: 'sidebar' }, brand(), nav, h('div', { class: 'sidebar-search' }, buildSearch()), h('div', { class: 'sidebar-foot' }, userBtn));
 
   // top bar
   const title = h('div', { class: 'topbar-title' });
@@ -194,10 +196,24 @@ function buildShell() {
   const avatarBtn = h('button', { class: 'icon-btn only-compact', type: 'button', 'aria-label': 'Account menu' }, ui.avatar(state.user, 30));
   avatarBtn.addEventListener('click', () => openUserMenu(avatarBtn));
 
+  // Greeting top centre; date and time top right, above the alerts.
+  const hello = h('div', { class: 'topbar-hello' });
+  const clock = h('div', { class: 'topbar-clock', 'aria-live': 'off' });
+  const tick = () => {
+    const now = new Date();
+    hello.textContent = `${greeting(now)}, ${state.user.first_name || state.user.name}.`;
+    clock.textContent = `${now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })} · ${now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+  };
+  tick();
+  setInterval(tick, 20000);
   const topbar = h('header', { class: 'topbar' },
-    menuBtn, title, buildSearch(), h('div', { class: 'topbar-spacer' }),
-    state.settings && state.settings.sample_data ? h('span', { class: 'sample-pill', title: 'Sales come from the daily DSR and DHR reports. Team names, posts and per-stylist splits are sample data while the portal is in preview.' }, h('span', { class: 'dot dot-warn' }), 'Preview', h('span', null, '· live sales, sample team')) : null,
-    bell, avatarBtn);
+    h('div', { class: 'topbar-left' }, menuBtn, title),
+    hello,
+    h('div', { class: 'topbar-right' },
+      clock,
+      h('div', { class: 'topbar-alerts' },
+        state.settings && state.settings.sample_data ? h('span', { class: 'sample-pill', title: 'Sales come from the daily DSR and DHR reports. Team names, posts and per-stylist splits are sample data while the portal is in preview.' }, h('span', { class: 'dot dot-warn' }), 'Preview', h('span', null, '· live sales, sample team')) : null,
+        bell, avatarBtn)));
 
   const content = h('main', { class: 'content', id: 'content', tabIndex: -1 });
   const scrim = h('div', { class: 'scrim', onClick: () => app.classList.remove('nav-open') });
@@ -234,7 +250,7 @@ function buildShell() {
 }
 
 function buildSearch() {
-  const input = h('input', { type: 'search', placeholder: 'Search people, salons, standards', 'aria-label': 'Search', autocomplete: 'off' });
+  const input = h('input', { type: 'search', placeholder: 'Search people, salons, guides', 'aria-label': 'Search', autocomplete: 'off' });
   const results = h('div', { class: 'search-results card', hidden: true });
   const wrap = h('div', { class: 'search' }, icon('search', 16), input, results);
   const close = () => { results.hidden = true; };
@@ -317,7 +333,7 @@ async function route() {
 
   const ctx = { user: state.user, settings: state.settings, params: match.params, query: match.query, navigate, can, refreshUnread };
   let node;
-  let title = 'SC Portal';
+  let title = 'CutsHub';
   try {
     if (!match.page) throw Object.assign(new Error('That page does not exist.'), { notFound: true });
     const mod = (await import(`./pages/${match.page}.js`)).default;
@@ -335,7 +351,7 @@ async function route() {
   }
   if (seq !== routeSeq) return;
   mount(shell.content, h('div', { class: 'page' }, node));
-  document.title = `${title} · SC Portal`;
+  document.title = `${title} · CutsHub`;
   shell.title.textContent = title;
   window.scrollTo(0, 0);
   bar.className = 'route-bar is-done';
@@ -361,14 +377,14 @@ async function signOut() {
 
 function installFlow() {
   if (pwa.canPrompt()) {
-    pwa.install().then((ok) => { if (ok) ui.toast('Installed. Look for SC Portal on your home screen.', 'good'); });
+    pwa.install().then((ok) => { if (ok) ui.toast('Installed. Look for CutsHub on your home screen.', 'good'); });
     return;
   }
   const steps = pwa.isIos()
-    ? ['Open this page in Safari.', 'Tap the Share button at the bottom of the screen.', 'Scroll down and tap "Add to Home Screen".', 'Tap Add. SC Portal now opens like any other app.']
-    : ['Open the browser menu (the three dots, top right).', 'Choose "Install app" or "Add to Home screen".', 'Confirm. SC Portal now opens like any other app.'];
+    ? ['Open this page in Safari.', 'Tap the Share button at the bottom of the screen.', 'Scroll down and tap "Add to Home Screen".', 'Tap Add. CutsHub now opens like any other app.']
+    : ['Open the browser menu (the three dots, top right).', 'Choose "Install app" or "Add to Home screen".', 'Confirm. CutsHub now opens like any other app.'];
   ui.modal({
-    title: 'Install SC Portal on your phone',
+    title: 'Install CutsHub on your phone',
     size: 'sm',
     body: h('ol', { class: 'prose' }, steps.map((s) => h('li', null, s))),
   });

@@ -39,7 +39,7 @@ module.exports = (ctx) => {
   }
   function publicSettings() {
     const get = (k, d) => json(db.prepare('SELECT value_json FROM settings WHERE key = ?').get(k)?.value_json, d);
-    return { company_name: get('company_name', 'SC Portal'), sample_data: !!get('sample_data', false), values: get('values', []),
+    return { company_name: get('company_name', 'CutsHub'), sample_data: !!get('sample_data', false), values: get('values', []),
       academy_url: get('academy_url', 'https://academy.dogwoodbrands.com'), isolved_url: get('isolved_url', null) };
   }
   ctx.meUser = meUser;

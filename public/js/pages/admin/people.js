@@ -24,7 +24,7 @@ function showTempPassword({ name, username, password, verb }) {
       h('div', { class: 'secret' },
         h('div', null, h('div', { class: 't-xs t-muted' }, 'Username'), h('code', null, username)),
         h('div', null, h('div', { class: 't-xs t-muted' }, 'Temporary password'), h('code', null, password))),
-      ui.button('Copy both', { variant: 'secondary', icon: 'download', block: true, onClick: () => copyText(`SC Portal sign-in\nUsername: ${username}\nTemporary password: ${password}`) })),
+      ui.button('Copy both', { variant: 'secondary', icon: 'download', block: true, onClick: () => copyText(`CutsHub sign-in\nUsername: ${username}\nTemporary password: ${password}`) })),
     actions: [ui.button('Done', { onClick: () => m.close() })],
   });
 }
@@ -133,7 +133,7 @@ function importDialog(ctx, onDone) {
           h('p', { class: 't-sm t-muted' }, 'Temporary passwords are shown only now. Download the list before you close this window, and hand each person their sign-in through their district leader. Everyone picks their own password the first time they sign in.'),
           ui.table({ columns: [{ key: 'name', label: 'Name' }, { key: 'salon_number', label: 'Salon' }, { key: 'username', label: 'Username' }, { key: 'temp_password', label: 'Temporary password', render: (r) => h('code', null, r.temp_password) }], rows: created }),
           h('div', { class: 'row gap-2 row-wrap' },
-            ui.button('Download sign-ins (CSV)', { icon: 'download', onClick: () => download(`SC Portal sign-ins - ${stamp}.csv`, [['name', 'salon_number', 'username', 'temporary_password'], ...created.map((c) => [c.name, c.salon_number || '', c.username, c.temp_password])]) }),
+            ui.button('Download sign-ins (CSV)', { icon: 'download', onClick: () => download(`CutsHub sign-ins - ${stamp}.csv`, [['name', 'salon_number', 'username', 'temporary_password'], ...created.map((c) => [c.name, c.salon_number || '', c.username, c.temp_password])]) }),
             ui.button('Copy the list', { variant: 'secondary', onClick: () => copyText(['name,salon,username,temporary_password', ...created.map((c) => [c.name, c.salon_number || '', c.username, c.temp_password].map(csvCell).join(','))].join('\n')) }))) : null,
         dryRun && created.length ? ui.table({ columns: [{ key: 'name', label: 'New person' }, { key: 'salon_number', label: 'Salon' }, { key: 'username', label: 'Username they will get' }], rows: created.slice(0, 200) }) : null,
         updated.length ? h('details', null, h('summary', { class: 't-sm' }, `${updated.length} people already in the portal`),
@@ -151,7 +151,7 @@ function importDialog(ctx, onDone) {
       const res = await fetch('/api/admin/users/template', { credentials: 'same-origin' });
       if (!res.ok) throw new Error('Could not download the template.');
       const blob = await res.blob();
-      const a = h('a', { href: URL.createObjectURL(blob), download: 'SC Portal - employee upload template.csv' });
+      const a = h('a', { href: URL.createObjectURL(blob), download: 'CutsHub - employee upload template.csv' });
       document.body.appendChild(a);
       a.click();
       setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);

@@ -1,0 +1,31 @@
+# Weekly dependency updates (docs/plans/2026-11-17-production-readiness.md, phase 0.4).
+# Each update arrives as a pull request and must pass CI before it can merge.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Chicago
+    open-pull-requests-limit: 5
+    groups:
+      # Minor and patch releases of the runtime dependencies in one pull request.
+      minor-and-patch:
+        update-types: [minor, patch]
+    # better-sqlite3 is replaced by PostgreSQL in phase 1; take its security fixes but not major upgrades.
+    ignore:
+      - dependency-name: better-sqlite3
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Chicago
+    groups:
+      actions:
+        patterns: ["*"]

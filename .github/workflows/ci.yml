@@ -1,0 +1,40 @@
+# Runs the test suite on every push and every pull request. `main` is protected on this check
+# (docs/plans/2026-11-17-production-readiness.md, phase 0.3).
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test (Node 22)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install openpyxl (the report-pipeline tests parse workbooks)
+        run: pip install openpyxl
+
+      - name: Check shell scripts parse
+        run: for f in scripts/*.sh; do sh -n "$f"; done
+
+      - name: Run tests
+        run: npm test

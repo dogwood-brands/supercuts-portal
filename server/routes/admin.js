@@ -8,6 +8,7 @@ const { v, bad, forbidden, notFound, conflict, idParam, nowIso, todayLocal, addD
 const { USER_SELECT, publicUser } = require('../shape');
 const { parseCsvObjects } = require('../import/csv');
 const { importDsr } = require('../import/dsr');
+const { importStylistDaily, STYLIST_TEMPLATE } = require('../import/stylist-daily');
 const { USERNAME_RE } = require('./auth');
 
 const likeArg = (q) => `%${q.replace(/[%_\\]/g, (m) => '\\' + m)}%`;
@@ -544,6 +545,25 @@ module.exports = (ctx) => {
     try { out = importDsr(db, csv); } catch (e) { if (e.userFacing) throw bad(e.message); throw e; }
     kpi.invalidate();
     audit(req, 'kpi.import', 'kpi_daily', null, { rows: out.rows, salons: out.salons, from: out.from, to: out.to, rejected: out.rejected_count });
+    res.json(out);
+  });
+
+  // Manual per-stylist upload (Nov 30 go-live): keeps personal figures current when a report is late
+  // or the automated import fails. Rows match users on employee_id and upsert on (user_id, date),
+  // marked source 'manual' so the nightly load never clears them. Same shape as the DSR import:
+  // JSON {csv, dry_run} or a raw text/csv body.
+  r.get('/admin/import/stylist-daily/template', requirePerm('admin.settings'), (req, res) => {
+    res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="sc-portal-stylist-daily-upload-template.csv"' });
+    res.send(STYLIST_TEMPLATE);
+  });
+  r.post('/admin/import/stylist-daily', requirePerm('admin.settings'), bigJson, express.text({ type: 'text/csv', limit: '8mb' }), (req, res) => {
+    const csv = typeof req.body === 'string' ? req.body : req.body?.csv;
+    if (typeof csv !== 'string' || !csv.trim()) throw bad('Paste or upload the per-stylist file (CSV).');
+    const dryRun = typeof req.body === 'object' && !!req.body?.dry_run;
+    let out;
+    try { out = importStylistDaily(db, csv, { dryRun }); } catch (e) { if (e.userFacing) throw bad(e.message); throw e; }
+    kpi.invalidate();
+    if (!dryRun) audit(req, 'stylist.import', 'kpi', null, { rows: out.rows, from: out.from, to: out.to, rejected: out.rejected_count });
     res.json(out);
   });
 

@@ -221,6 +221,44 @@ test('Ask HR keeps no message content: who and when only, HR moves it to the HR 
   assert.equal(/Missing hours/.test(JSON.stringify((await manager.get('/api/search?q=Missing')).body)), false);
 });
 
+test('the HR inbox flags automatic delivery that is stuck on a waiting message', async () => {
+  // The relay is configured but its sends fail (like an expired token): the five-minute retry keeps
+  // failing and the message waits. The inbox must say so.
+  const q = await startPortal({
+    sample: true,
+    hrRelayOptions: {
+      env: { SCP_MAIL_CLIENT_ID: 'a', SCP_MAIL_CLIENT_SECRET: 'b', SCP_MAIL_REFRESH_TOKEN: 'c', SCP_MAIL_FROM: 'portal@example.com' },
+      fetchImpl: async () => { throw new Error('send failed'); },
+    },
+  });
+  const qHr = await q.as('demo.hr');
+  const qClient = await q.client();
+  await qClient.login('demo.stylist');
+  const made = await qClient.post('/api/hr/inquiries', { subject: 'Stuck check', body: 'A real message.' });
+  assert.equal(made.status, 200);
+  // Fresh row: the five-minute retry has not had a chance to fail yet, so nothing is stuck.
+  let inbox = (await qHr.get('/api/hr/inquiries')).body;
+  assert.equal(inbox.delivery.configured, true);
+  assert.equal(inbox.delivery.stuck, false);
+  // 45 minutes later the row is still there: the retry is failing somewhere. That is stuck.
+  q.db.prepare('UPDATE hr_outbox SET created_at = ?').run(new Date(Date.now() - 45 * 60000).toISOString());
+  inbox = (await qHr.get('/api/hr/inquiries')).body;
+  assert.equal(inbox.delivery.stuck, true);
+  assert.ok(inbox.delivery.oldest_waiting_minutes >= 45, `oldest waiting ${inbox.delivery.oldest_waiting_minutes}`);
+  await q.stop();
+  // In manual mode (relay not configured) waiting is by design, never "stuck".
+  const manual = await startPortal({ sample: true });
+  const mHr = await manual.as('demo.hr');
+  const mClient = await manual.client();
+  await mClient.login('demo.stylist');
+  await mClient.post('/api/hr/inquiries', { subject: 'Manual check', body: 'x' });
+  manual.db.prepare('UPDATE hr_outbox SET created_at = ?').run(new Date(Date.now() - 90 * 60000).toISOString());
+  const mInbox = (await mHr.get('/api/hr/inquiries')).body;
+  assert.equal(mInbox.delivery.configured, false);
+  assert.equal(mInbox.delivery.stuck, false, 'manual delivery waiting is by design');
+  await manual.stop();
+});
+
 test('Ask HR delivers by email when the sending mailbox is configured, then deletes the content', async () => {
   const { makeHrRelay } = require('../server/hr-relay');
   const sent = [];

@@ -23,8 +23,12 @@ from datetime import date, datetime, timedelta
 
 import openpyxl
 
-RAW_DIR = "/Users/dogwoodbrandscompany/dogwood-agents/data/dsr-dhr/raw"
-OUT_DIR = "/Users/dogwoodbrandscompany/dogwood-agents/data/dsr-dhr"
+RAW_DIR = os.environ.get(
+    "SCP_PIPELINE_RAW_DIR",
+    "/Users/dogwoodbrandscompany/dogwood-agents/data/dsr-dhr/raw")
+OUT_DIR = os.environ.get(
+    "SCP_PIPELINE_OUT_DIR",
+    "/Users/dogwoodbrandscompany/dogwood-agents/data/dsr-dhr")
 
 # Cali pattern: "01 APPLE VALLEY 80660" -> 80660 (trailing 4-5 digit)
 # NV/AZ pattern: "LV02 - 82298 - Sahara Town Sqr", "EE03 - 82614 - ..." -> first standalone 4-5 digit after entity code

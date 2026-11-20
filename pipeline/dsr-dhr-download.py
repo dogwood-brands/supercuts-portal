@@ -9,9 +9,15 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-CREDENTIALS_FILE = "/Users/dogwoodbrandscompany/.gmail-mcp/credentials.json"
-OAUTH_KEYS_FILE = "/Users/dogwoodbrandscompany/.gmail-mcp/gcp-oauth.keys.json"
-OUTPUT_DIR = "/Users/dogwoodbrandscompany/dogwood-agents/data/dsr-dhr/raw"
+CREDENTIALS_FILE = os.environ.get(
+    "SCP_GMAIL_CREDENTIALS_FILE",
+    "/Users/dogwoodbrandscompany/.gmail-mcp/credentials.json")
+OAUTH_KEYS_FILE = os.environ.get(
+    "SCP_GMAIL_OAUTH_KEYS_FILE",
+    "/Users/dogwoodbrandscompany/.gmail-mcp/gcp-oauth.keys.json")
+OUTPUT_DIR = os.environ.get(
+    "SCP_PIPELINE_RAW_DIR",
+    "/Users/dogwoodbrandscompany/dogwood-agents/data/dsr-dhr/raw")
 # Since 2026-09-30 the reports are sent by hand from Emory's mailbox instead of reports@scsalons.com,
 # with subjects like "November DSR With Targets Update 11-11-26". Both senders are read.
 SEARCH_QUERY = "(from:reports@scsalons.com OR from:es@dogwoodbrands.com) has:attachment (DSR OR DHR)"

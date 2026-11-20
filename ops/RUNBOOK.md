@@ -63,8 +63,64 @@ cp ops/com.dogwood.supercuts-portal-backup.plist ~/Library/LaunchAgents/
 launchctl load ~/Library/LaunchAgents/com.dogwood.supercuts-portal-backup.plist
 ```
 
-`data/backups/` is on the same disk as the portal. Copy it somewhere else as well (the NAS or Drive);
-a backup on the same machine does not protect against losing the machine.
+### Off-site copy
+
+`data/backups/` is on the same disk as the portal, which does not protect against losing the machine. After each
+backup, `scripts/backup-offsite.sh` copies the newest database and uploads backups to `SCP_BACKUP_OFFSITE`, checks
+each copy matches byte for byte, and keeps the newest `SCP_BACKUP_OFFSITE_KEEP` (default 30) of each there.
+
+`SCP_BACKUP_OFFSITE` is either:
+
+- a folder that lives somewhere else, such as a Google Drive for desktop folder
+  (`/Users/<user>/Library/CloudStorage/GoogleDrive-<account>/Shared drives/<drive>/SC Portal backups`) or a mounted
+  NAS share. The folder must already exist; the copy fails rather than creating it, because a missing folder
+  usually means Drive or the share is not mounted. Use a location only leadership and IT can open: the backups hold
+  staff names, contact details and the audit log.
+- an S3 URL (`s3://bucket/prefix`), with the `aws` command installed and signed in. Set a lifecycle rule on the
+  bucket for retention.
+
+To set it up on the office machine:
+
+1. Create the destination folder (or bucket) and confirm it is reachable from the portal's user account.
+2. Fill in `SCP_BACKUP_OFFSITE` in `ops/com.dogwood.supercuts-portal-backup.plist`, then install it as above
+   (`launchctl unload` first if it is already installed).
+3. Run it once now: `launchctl kickstart gui/$(id -u)/com.dogwood.supercuts-portal-backup`.
+4. Check the log ends with `Copied off site: ...` and the files are at the destination:
+   `tail -n 5 ../logs/supercuts-portal-backup.log`.
+
+Without `SCP_BACKUP_OFFSITE` the backup still runs and logs `Off-site copy skipped`. A failed copy ends the job with
+an error in the same log; the local backup is already written by then.
+
+Restore from an off-site copy by copying the file back into `data/backups/` and following the steps below.
+
+## Sales inbox ingestion (DSR / DHR)
+
+Twice a day at 11:20 AM and 3:20 PM Central, `com.dogwood.supercuts-portal-sales` pulls the DSR and
+DHR report attachments from the reports inbox, rebuilds `data/dsr-dhr/daily.csv` and
+`data/dsr-targets.csv`, and loads both into the portal. Log: `../logs/supercuts-portal-sales.log`.
+
+One-time set-up — the reports inbox (reports@scsalons.com) is read over the Gmail API:
+
+1. In the scsalons.com Google Cloud project (the same one as Ask HR), create an OAuth client of type
+   **Desktop app**.
+2. Authorize reports@scsalons.com for read-only mailbox access
+   (`https://www.googleapis.com/auth/gmail.readonly`) and save the refresh token as
+   `data/gmail/credentials.json` in this shape:
+   `{"refresh_token": "...", "access_token": "...", "expiry_date": 0}`,
+   with the client's keys in `data/gmail/gcp-oauth.keys.json`. Both files hold secrets: `data/` is
+   gitignored, and both should be readable only by the portal's user account (`chmod 600`).
+3. Fill `SCP_GMAIL_CREDENTIALS_FILE` and `SCP_GMAIL_OAUTH_KEYS_FILE` in
+   `ops/com.dogwood.supercuts-portal-sales.plist`, then install it:
+   `cp ops/com.dogwood.supercuts-portal-sales.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.dogwood.supercuts-portal-sales.plist`.
+4. Run it once now: `launchctl kickstart gui/$(id -u)/com.dogwood.supercuts-portal-sales`.
+5. Check the log ends with `Sales freshness OK: data through ...`:
+   `tail -n 10 ../logs/supercuts-portal-sales.log`.
+
+Run it by hand any time: `sh scripts/refresh-sales.sh`. A log line
+`WARNING: sales data is N days old` means no report arrived: check the inbox and, until the report
+lands, keep figures current by hand (Admin, People, Upload stylist data — the nightly load never
+clears uploaded rows). Until the old `claude@dogwoodbrands.com` mailbox flow is retired, both feeds
+run in parallel: compare their ledger row counts before cutting the old one off.
 
 ## Restore
 

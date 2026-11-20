@@ -27,7 +27,7 @@ Requires Node 22 or newer. There is no build step.
 npm install
 npm run seed      # creates data/portal.db with the organisation and sample data
 npm start         # http://127.0.0.1:3996
-npm test          # 47 tests: sign-in, access rules, HR privacy, uploads, imports
+npm test          # sign-in, access rules, HR privacy, uploads, imports, backups
 ```
 
 `npm run seed` writes the generated sign-ins to `data/demo-logins.txt` (readable only by the current user). It is never committed.

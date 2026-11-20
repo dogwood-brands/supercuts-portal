@@ -178,6 +178,75 @@ function importDialog(ctx, onDone) {
   });
 }
 
+// Manual per-stylist figures (Nov 30 go-live): keeps the pay-plan page current when a report is late
+// or the automated import fails. One row per person per day, matched by employee ID. Uploaded rows
+// are marked 'manual' and survive the nightly sales load, which clears only sample rows.
+function stylistUploadDialog(ctx, onDone) {
+  const text = h('textarea', { class: 'textarea mono', rows: 8, placeholder: 'employee_id,date,service,product,guests,hours\n100234,2026-11-19,450.00,25.50,8,6.5\n100118,2026-11-19,300,12.25,5,4.25', 'aria-label': 'Per-stylist file (CSV)', spellcheck: false });
+  const file = h('input', { type: 'file', accept: '.csv,text/csv', class: 'sr-only', id: 'stylist-file' });
+  const fileName = h('span', { class: 't-sm t-muted t-clip' });
+  file.addEventListener('change', async () => {
+    const f = file.files[0];
+    if (!f) return;
+    text.value = await f.text();
+    fileName.textContent = f.name;
+  });
+  const result = h('div');
+  const money = (c) => (c == null ? '' : `$${(Number(c) / 100).toFixed(2)}`);
+  const run = async (dryRun) => {
+    const csv = text.value.trim();
+    if (!csv) { ui.toast('Choose the file or paste it first.', 'bad'); return; }
+    if (!dryRun && !(await ui.confirm({ title: 'Update these figures?', body: 'Rows are matched to people by employee ID and replace that person\'s numbers for that day. Re-uploading a corrected file is safe; the nightly sales load does not clear uploaded rows.', confirmLabel: 'Upload' }))) return;
+    mount(result, ui.skeleton('list', 3));
+    try {
+      const res = await api.post('/admin/import/stylist-daily', { csv, dry_run: dryRun });
+      const people = res.people || [];
+      const rejected = res.rejected || [];
+      mount(result, h('div', { class: 'stack' },
+        h('div', { class: 'row gap-2 row-wrap' },
+          ui.badge(`${res.rows} ${dryRun ? 'to update' : 'rows updated'}`, 'good'),
+          rejected.length ? ui.badge(`${rejected.length} skipped`, 'bad') : null),
+        dryRun ? h('p', { class: 't-sm t-muted' }, 'Nothing has changed yet. Fix any skipped rows in the file, then press Upload.') : null,
+        people.length ? ui.table({ columns: [{ key: 'name', label: 'Name' }, { key: 'date', label: 'Day' }, { key: 'service_c', label: 'Service', render: money }, { key: 'product_c', label: 'Product', render: money }, { key: 'guests', label: 'Guests', align: 'right' }, { key: 'hours', label: 'Hours', align: 'right' }], rows: people.slice(0, 200) }) : null,
+        rejected.length ? h('div', { class: 'stack' },
+          h('h4', null, 'Rows that were skipped'),
+          ui.table({ columns: [{ key: 'line', label: 'Line', align: 'right' }, { key: 'reason', label: 'Why' }], rows: rejected })) : null));
+      if (!dryRun && res.rows) onDone();
+    } catch (err) {
+      mount(result, h('div', { class: 'field-error' }, err.message));
+    }
+  };
+  const template = async () => {
+    try {
+      const res = await fetch('/api/admin/import/stylist-daily/template', { credentials: 'same-origin' });
+      if (!res.ok) throw new Error('Could not download the template.');
+      const blob = await res.blob();
+      const a = h('a', { href: URL.createObjectURL(blob), download: 'CutsHub - per-stylist upload template.csv' });
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    } catch (err) { ui.toast(err.message, 'bad'); }
+  };
+  ui.modal({
+    title: 'Upload stylist data',
+    size: 'lg',
+    body: h('div', { class: 'stack' },
+      h('p', { class: 't-sm t-muted' }, 'Upload per-person figures for days the automated import missed: one row per person per day, matched by employee ID. Service and product are dollar amounts for that person\'s day; guests and clocked hours are optional. Up to 60,000 rows at a time.'),
+      h('ul', { class: 'prose t-sm' },
+        h('li', null, 'Employee IDs must match the portal. Upload the roster first if an ID does not match.'),
+        h('li', null, 'A person already has figures for that day? The upload replaces them.'),
+        h('li', null, 'Uploaded rows are kept by the nightly sales load; only sample figures are cleared.')),
+      text,
+      h('div', { class: 'row gap-2 row-wrap' },
+        h('label', { class: 'btn btn-secondary', for: 'stylist-file' }, ui.icon('upload', 18), 'Choose a CSV file'), file, fileName,
+        ui.button('Download the template', { variant: 'ghost', icon: 'download', onClick: template }),
+        h('span', { class: 'grow' }),
+        ui.button('Check the file', { variant: 'secondary', onClick: () => run(true) }),
+        ui.button('Upload', { icon: 'check', onClick: () => run(false) })),
+      result),
+  });
+}
+
 export default function people(ctx) {
   const host = h('div');
   const f = { q: '', role: '', status: 'active', salon_id: '' };
@@ -255,6 +324,7 @@ export default function people(ctx) {
       h('h2', null, 'People'),
       h('div', { class: 'row gap-2' },
         ui.button('Upload employees', { variant: 'secondary', icon: 'upload', onClick: () => importDialog(ctx, () => load({ quiet: true })) }),
+        ctx.user.role === 'admin' ? ui.button('Upload stylist data', { variant: 'secondary', icon: 'upload', onClick: () => stylistUploadDialog(ctx, () => load({ quiet: true })) }) : null,
         ui.button('Add a person', { icon: 'plus', onClick: () => openEdit(null) }))),
     h('div', { class: 'toolbar' },
       searchBox('Search by name, username or email', (v) => { f.q = v; load(); }),

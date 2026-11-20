@@ -93,6 +93,35 @@ an error in the same log; the local backup is already written by then.
 
 Restore from an off-site copy by copying the file back into `data/backups/` and following the steps below.
 
+## Sales inbox ingestion (DSR / DHR)
+
+Twice a day at 11:20 AM and 3:20 PM Central, `com.dogwood.supercuts-portal-sales` pulls the DSR and
+DHR report attachments from the reports inbox, rebuilds `data/dsr-dhr/daily.csv` and
+`data/dsr-targets.csv`, and loads both into the portal. Log: `../logs/supercuts-portal-sales.log`.
+
+One-time set-up — the reports inbox (reports@scsalons.com) is read over the Gmail API:
+
+1. In the scsalons.com Google Cloud project (the same one as Ask HR), create an OAuth client of type
+   **Desktop app**.
+2. Authorize reports@scsalons.com for read-only mailbox access
+   (`https://www.googleapis.com/auth/gmail.readonly`) and save the refresh token as
+   `data/gmail/credentials.json` in this shape:
+   `{"refresh_token": "...", "access_token": "...", "expiry_date": 0}`,
+   with the client's keys in `data/gmail/gcp-oauth.keys.json`. Both files hold secrets: `data/` is
+   gitignored, and both should be readable only by the portal's user account (`chmod 600`).
+3. Fill `SCP_GMAIL_CREDENTIALS_FILE` and `SCP_GMAIL_OAUTH_KEYS_FILE` in
+   `ops/com.dogwood.supercuts-portal-sales.plist`, then install it:
+   `cp ops/com.dogwood.supercuts-portal-sales.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.dogwood.supercuts-portal-sales.plist`.
+4. Run it once now: `launchctl kickstart gui/$(id -u)/com.dogwood.supercuts-portal-sales`.
+5. Check the log ends with `Sales freshness OK: data through ...`:
+   `tail -n 10 ../logs/supercuts-portal-sales.log`.
+
+Run it by hand any time: `sh scripts/refresh-sales.sh`. A log line
+`WARNING: sales data is N days old` means no report arrived: check the inbox and, until the report
+lands, keep figures current by hand (Admin, People, Upload stylist data — the nightly load never
+clears uploaded rows). Until the old `claude@dogwoodbrands.com` mailbox flow is retired, both feeds
+run in parallel: compare their ledger row counts before cutting the old one off.
+
 ## Restore
 
 ```sh

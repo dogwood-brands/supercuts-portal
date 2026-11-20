@@ -4,23 +4,44 @@
 <dict>
   <key>Label</key>
   <string>com.dogwood.supercuts-portal-sales</string>
+  <key>Comment</key>
+  <string>Pulls the DSR/DHR reports from the reports inbox and loads them into the portal, twice a day. Needs the inbox credentials (see ops/RUNBOOK.md) before installing.</string>
   <key>ProgramArguments</key>
   <array>
-    <string>/bin/bash</string>
+    <string>/bin/sh</string>
     <string>/Users/dogwoodbrandscompany/dogwood-agents/supercuts-portal/scripts/refresh-sales.sh</string>
-  </array>
-  <!-- Central time (this Mac's clock). Keep in step with RUN_TIMES in server/refresh.js -->
-  <key>StartCalendarInterval</key>
-  <array>
-    <dict><key>Hour</key><integer>11</integer><key>Minute</key><integer>20</integer></dict>
-    <dict><key>Hour</key><integer>15</integer><key>Minute</key><integer>20</integer></dict>
   </array>
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key>
     <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <!-- Gmail OAuth files for the reports inbox: an OAuth client (Desktop app) created in the
+         scsalons.com Cloud project and a refresh token for reports@scsalons.com with gmail.readonly.
+         Fill in before installing; left empty the download step fails and the log says so.
+         See ops/RUNBOOK.md for the set-up steps. -->
+    <key>SCP_GMAIL_CREDENTIALS_FILE</key>
+    <string></string>
+    <key>SCP_GMAIL_OAUTH_KEYS_FILE</key>
+    <string></string>
   </dict>
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict>
+      <key>Hour</key>
+      <integer>11</integer>
+      <key>Minute</key>
+      <integer>20</integer>
+    </dict>
+    <dict>
+      <key>Hour</key>
+      <integer>15</integer>
+      <key>Minute</key>
+      <integer>20</integer>
+    </dict>
+  </array>
+  <key>StandardOutPath</key>
+  <string>/Users/dogwoodbrandscompany/dogwood-agents/logs/supercuts-portal-sales.log</string>
   <key>StandardErrorPath</key>
-  <string>/Users/dogwoodbrandscompany/dogwood-agents/logs/supercuts-portal-sales.err.log</string>
+  <string>/Users/dogwoodbrandscompany/dogwood-agents/logs/supercuts-portal-sales.log</string>
 </dict>
 </plist>

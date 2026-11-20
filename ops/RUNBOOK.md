@@ -63,8 +63,35 @@ cp ops/com.dogwood.supercuts-portal-backup.plist ~/Library/LaunchAgents/
 launchctl load ~/Library/LaunchAgents/com.dogwood.supercuts-portal-backup.plist
 ```
 
-`data/backups/` is on the same disk as the portal. Copy it somewhere else as well (the NAS or Drive);
-a backup on the same machine does not protect against losing the machine.
+### Off-site copy
+
+`data/backups/` is on the same disk as the portal, which does not protect against losing the machine. After each
+backup, `scripts/backup-offsite.sh` copies the newest database and uploads backups to `SCP_BACKUP_OFFSITE`, checks
+each copy matches byte for byte, and keeps the newest `SCP_BACKUP_OFFSITE_KEEP` (default 30) of each there.
+
+`SCP_BACKUP_OFFSITE` is either:
+
+- a folder that lives somewhere else, such as a Google Drive for desktop folder
+  (`/Users/<user>/Library/CloudStorage/GoogleDrive-<account>/Shared drives/<drive>/SC Portal backups`) or a mounted
+  NAS share. The folder must already exist; the copy fails rather than creating it, because a missing folder
+  usually means Drive or the share is not mounted. Use a location only leadership and IT can open: the backups hold
+  staff names, contact details and the audit log.
+- an S3 URL (`s3://bucket/prefix`), with the `aws` command installed and signed in. Set a lifecycle rule on the
+  bucket for retention.
+
+To set it up on the office machine:
+
+1. Create the destination folder (or bucket) and confirm it is reachable from the portal's user account.
+2. Fill in `SCP_BACKUP_OFFSITE` in `ops/com.dogwood.supercuts-portal-backup.plist`, then install it as above
+   (`launchctl unload` first if it is already installed).
+3. Run it once now: `launchctl kickstart gui/$(id -u)/com.dogwood.supercuts-portal-backup`.
+4. Check the log ends with `Copied off site: ...` and the files are at the destination:
+   `tail -n 5 ../logs/supercuts-portal-backup.log`.
+
+Without `SCP_BACKUP_OFFSITE` the backup still runs and logs `Off-site copy skipped`. A failed copy ends the job with
+an error in the same log; the local backup is already written by then.
+
+Restore from an off-site copy by copying the file back into `data/backups/` and following the steps below.
 
 ## Restore
 

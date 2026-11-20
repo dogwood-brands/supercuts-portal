@@ -13,6 +13,12 @@
   <dict>
     <key>PATH</key>
     <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <!-- Off-site copy: a folder on Google Drive for desktop or a mounted NAS share, or s3://bucket/prefix.
+         Fill in before installing. Left empty, backups stay on this machine only. See ops/RUNBOOK.md. -->
+    <key>SCP_BACKUP_OFFSITE</key>
+    <string></string>
+    <key>SCP_BACKUP_OFFSITE_KEEP</key>
+    <string>30</string>
   </dict>
   <key>StartCalendarInterval</key>
   <dict>

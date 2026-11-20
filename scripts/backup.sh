@@ -1,6 +1,7 @@
 #!/bin/sh
 # Backs up the portal: a consistent copy of the database (safe while the server is running)
-# plus the uploaded photos. Keeps the newest 30 of each in data/backups.
+# plus the uploaded photos. Keeps the newest 30 of each in data/backups, then copies the newest of each
+# off this machine when SCP_BACKUP_OFFSITE is set (scripts/backup-offsite.sh).
 #   sh scripts/backup.sh
 set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -42,3 +43,6 @@ for pattern in 'portal_*.db.gz' 'uploads_*.tar.gz'; do
 done
 
 echo "Backup written: $OUT/portal_$STAMP.db.gz"
+
+# Off-site copy (see scripts/backup-offsite.sh). Skipped with a warning when SCP_BACKUP_OFFSITE is not set.
+SCP_BACKUPS="$OUT" sh "$ROOT/scripts/backup-offsite.sh"

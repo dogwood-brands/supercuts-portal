@@ -50,8 +50,9 @@ if (fs.existsSync(TARGETS)) {
 // The reports carry a sales target only. Product % and sales-per-hour goals were sample values; clear them
 // so those measures are compared with the company median instead of an invented goal.
 db.prepare("UPDATE kpi_goals SET product_pct_goal = NULL, srph_goal_c = NULL WHERE goal_source != 'manual'").run();
-// The reports are by salon, not by person. Remove any sample per-stylist figures.
-const scaled = db.prepare('DELETE FROM stylist_daily').run().changes;
+// The reports are by salon, not by person. Remove sample per-stylist figures; rows uploaded by the
+// home office (source 'manual') and a future feed's rows must survive every load.
+const scaled = db.prepare("DELETE FROM stylist_daily WHERE source = 'sample'").run().changes;
 
 db.prepare("INSERT INTO settings (key, value_json) VALUES ('kpi_refresh', ?) ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json")
   .run(JSON.stringify({ source: 'dsr', last_loaded_at: now, data_through: report.to, rows: report.rows }));

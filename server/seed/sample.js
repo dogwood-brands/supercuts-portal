@@ -366,7 +366,7 @@ function seedSample(db, { seed = 20261111, passwordFor = () => null, log = () =>
     const DAYS = 120;
     const WEEKDAY = [0.86, 0.8, 0.84, 0.9, 0.96, 1.16, 1.42]; // Sun..Sat
     const insK = db.prepare(`INSERT OR REPLACE INTO kpi_daily (salon_id, date, net_sales_c, service_c, product_c, guests, haircuts, hours, supercut_plus, source) VALUES (?,?,?,?,?,?,?,?,?, 'sample')`);
-    const insSD = db.prepare('INSERT OR REPLACE INTO stylist_daily (user_id, date, service_c, product_c, guests, hours) VALUES (?,?,?,?,?,?)');
+    const insSD = db.prepare("INSERT OR REPLACE INTO stylist_daily (user_id, date, service_c, product_c, guests, hours, source) VALUES (?,?,?,?,?,?, 'sample')");
     const insGoal = db.prepare('INSERT OR REPLACE INTO kpi_goals (salon_id, period, sales_goal_c, product_pct_goal, srph_goal_c) VALUES (?,?,?,?,?)');
     const periods = [...new Set(Array.from({ length: DAYS }, (_, i) => addDays(yesterday, -i).slice(0, 7)))];
 

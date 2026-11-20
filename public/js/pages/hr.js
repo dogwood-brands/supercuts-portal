@@ -100,9 +100,11 @@ function hrView(ctx) {
     };
     const waitingBlock = waiting.length
       ? h('div', { class: 'stack' },
-        h('div', { class: 'callout' }, ui.icon('alert', 18), h('span', null, delivery.configured
-          ? `${waiting.length} waiting to be emailed to ${delivery.to}. The portal retries every five minutes.`
-          : `Automatic delivery to ${delivery.to} is not switched on yet. Copy each message into the HR inbox, then delete it here.`)),
+        h('div', { class: 'callout' }, ui.icon('alert', 18), h('span', null, delivery.stuck
+          ? `${waiting.length} waiting, and the email retry is failing (oldest waiting ${delivery.oldest_waiting_minutes} minutes). Move them into the HR inbox by hand, then check the sending credentials in the runbook.`
+          : delivery.configured
+            ? `${waiting.length} waiting to be emailed to ${delivery.to}. The portal retries every five minutes.`
+            : `Automatic delivery to ${delivery.to} is not switched on yet. Copy each message into the HR inbox, then delete it here.`)),
         waiting.map((w) => ui.card({ title: w.subject, action: h('span', { class: 't-xs t-muted' }, dateTime(w.created_at)) },
           h('div', { class: 'stack' },
             h('div', { class: 't-sm' }, w.author ? h('a', { class: 't-link', href: `#/people/${w.author.id}` }, w.author.name) : 'Team member', w.author ? h('span', { class: 't-muted' }, ` · ${whereLabel(w.author)}`) : null),

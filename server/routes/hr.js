@@ -26,8 +26,15 @@ module.exports = (ctx) => {
     const users = shapes.usersByIds(rows.map((x) => x.author_id));
     const waiting = db.prepare('SELECT o.submission_id, o.subject, o.body, o.attempts, o.created_at, h.author_id FROM hr_outbox o JOIN hr_submissions h ON h.id = o.submission_id ORDER BY o.submission_id').all();
     const wUsers = shapes.usersByIds(waiting.map((x) => x.author_id));
+    // A configured relay clears the outbox within minutes (the retry runs every five). Waiting longer
+    // than half an hour means delivery is failing, so the inbox says so. Waiting in manual mode is
+    // by design and never counts as stuck.
+    const STUCK_AFTER_MINUTES = 30;
+    const oldest = waiting.reduce((a, x) => (!a || x.created_at < a ? x.created_at : a), null);
+    const oldestWaitingMin = oldest ? Math.round((Date.now() - Date.parse(oldest)) / 60000) : null;
+    const stuck = relay.configured() && oldestWaitingMin !== null && oldestWaitingMin >= STUCK_AFTER_MINUTES;
     res.json({
-      delivery: { configured: relay.configured(), to: relay.to() },
+      delivery: { configured: relay.configured(), stuck, oldest_waiting_minutes: oldestWaitingMin, to: relay.to() },
       waiting: waiting.map((x) => ({ id: x.submission_id, subject: x.subject, body: x.body, attempts: x.attempts, created_at: x.created_at, author: wUsers.get(x.author_id) || null })),
       items: rows.map((x) => ({ id: x.id, author: users.get(x.author_id) || null, created_at: x.created_at, acknowledged_at: x.acknowledged_at, delivered_at: x.delivered_at, delivery: x.delivery })),
     });

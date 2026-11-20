@@ -14,7 +14,7 @@ const { seedSample } = require('../server/seed/sample');
 
 const PASSWORD = 'correct-horse-battery';
 
-async function startPortal({ sample = true, config = {} } = {}) {
+async function startPortal({ sample = true, config = {}, hrRelay = null, hrRelayOptions = null } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'scp-test-'));
   const db = openDb(path.join(dir, 'portal.db'));
   migrate(db);
@@ -23,7 +23,10 @@ async function startPortal({ sample = true, config = {} } = {}) {
   seedOrg(db, { passwordFor });
   if (sample) seedSample(db, { passwordFor });
   db.prepare('UPDATE users SET password_hash = ?, must_change_password = 0').run(hash); // every account can sign in during tests
-  const app = createApp({ db, uploadsDir: path.join(dir, 'uploads'), config: { loginLimit: 1000, apiLimitPerMinute: 100000, ...config }, log: { error() {} } });
+  // hrRelayOptions: options for the real relay on THIS portal's database (env, fetchImpl, ...);
+  // never do real network in tests - pass a fetchImpl that fails or succeeds without I/O.
+  const relay = hrRelayOptions ? require('../server/hr-relay').makeHrRelay(db, { log: { error() {} }, ...hrRelayOptions }) : hrRelay;
+  const app = createApp({ db, uploadsDir: path.join(dir, 'uploads'), config: { loginLimit: 1000, apiLimitPerMinute: 100000, ...config }, log: { error() {} }, hrRelay: relay });
   const server = await new Promise((resolve) => { const s = app.listen(0, '127.0.0.1', () => resolve(s)); });
   const base = `http://127.0.0.1:${server.address().port}`;
 

@@ -30,6 +30,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install openpyxl (the report-pipeline tests parse workbooks)
+        run: pip install openpyxl
+
       - name: Check shell scripts parse
         run: for f in scripts/*.sh; do sh -n "$f"; done
 

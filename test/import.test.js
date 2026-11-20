@@ -71,8 +71,8 @@ test('the admin route imports, audits and refreshes the KPIs', async () => {
   assert.equal(asText.status, 200);
 });
 
-test('the real daily ledger parses cleanly (temp database only)', { skip: !fs.existsSync(path.join(__dirname, '..', '..', 'data', 'dsr-dhr', 'daily.csv')) }, () => {
-  const csv = fs.readFileSync(path.join(__dirname, '..', '..', 'data', 'dsr-dhr', 'daily.csv'), 'utf8');
+test('the real daily ledger parses cleanly (temp database only)', { skip: !fs.existsSync(path.join(__dirname, '..', 'data', 'dsr-dhr', 'daily.csv')) }, () => {
+  const csv = fs.readFileSync(path.join(__dirname, '..', 'data', 'dsr-dhr', 'daily.csv'), 'utf8');
   const out = importDsr(p.db, csv);
   assert.ok(out.rows > 5000, `rows ${out.rows}`);
   assert.ok(out.salons >= 45, `salons ${out.salons}`);

@@ -14,7 +14,7 @@ const { migrate } = require('../migrate');
 const { importDsr } = require('./dsr');
 const { parseCsvObjects } = require('./csv');
 
-const LEDGER = process.argv[2] || path.join(ROOT, '..', 'data', 'dsr-dhr', 'daily.csv');
+const LEDGER = process.argv[2] || path.join(ROOT, 'data', 'dsr-dhr', 'daily.csv');
 const TARGETS = process.argv[3] || path.join(ROOT, 'data', 'dsr-targets.csv');
 
 const db = openDb();

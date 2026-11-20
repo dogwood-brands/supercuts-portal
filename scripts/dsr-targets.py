@@ -6,8 +6,8 @@ import csv, glob, os, re, sys
 from datetime import date, timedelta
 import openpyxl
 
-RAW = "/Users/dogwoodbrandscompany/dogwood-agents/data/dsr-dhr/raw"
-OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "dsr-targets.csv")
+RAW = os.environ.get("SCP_PIPELINE_RAW_DIR", "/Users/dogwoodbrandscompany/dogwood-agents/data/dsr-dhr/raw")
+OUT = os.environ.get("SCP_TARGETS_FILE", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "dsr-targets.csv"))
 
 def num(v):
     try: return float(v)
